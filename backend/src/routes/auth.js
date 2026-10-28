@@ -8,8 +8,37 @@ import { db } from '../../db/connection.js';
 import { users } from '../../db/schema.js';
 
 const router = Router();
-
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const allowedEmailDomains = new Set([
+  'gmail.com',
+  'googlemail.com',
+  'yahoo.com',
+  'yahoo.co.id',
+  'ymail.com',
+  'outlook.com',
+  'hotmail.com',
+  'live.com',
+  'msn.com',
+  'icloud.com',
+  'me.com',
+  'proton.me',
+  'protonmail.com',
+  'zoho.com'
+]);
+
+function isOfficialEmail(email) {
+  if (!emailPattern.test(email)) return false;
+  const domain = email.split('@')[1]?.toLowerCase();
+  if (!domain) return false;
+
+  // Izinkan domain resmi di daftar ATAU email resmi kampus/sekolah Indonesia (.ac.id / .sch.id / .edu)
+  return (
+    allowedEmailDomains.has(domain) ||
+    domain.endsWith('.ac.id') ||
+    domain.endsWith('.sch.id') ||
+    domain.endsWith('.edu')
+  );
+}
 
 function isDuplicateEmailError(error) {
   return (
@@ -22,17 +51,18 @@ function isDuplicateEmailError(error) {
 
 // POST /api/auth/register
 router.post('/register', async (req, res) => {
-  const { name, email, password } = req.body ?? {};
+  const { name, email, password, confirmPassword } = req.body ?? {};
 
   if (
     typeof name !== 'string' ||
     typeof email !== 'string' ||
-    typeof password !== 'string'
+    typeof password !== 'string' ||
+    typeof confirmPassword !== 'string'
   ) {
     return res.status(400).json({
       success: false,
       code: 'INVALID_INPUT',
-      message: 'Nama, email, dan password wajib diisi.'
+      message: 'Nama, email, password, dan konfirmasi password wajib diisi.'
     });
   }
 
@@ -47,14 +77,20 @@ router.post('/register', async (req, res) => {
     });
   }
 
-  if (
-    cleanEmail.length > 191 ||
-    !emailPattern.test(cleanEmail)
-  ) {
+  if (cleanEmail.length > 191 || !emailPattern.test(cleanEmail)) {
     return res.status(400).json({
       success: false,
       code: 'INVALID_EMAIL',
       message: 'Format email tidak valid.'
+    });
+  }
+
+  // Cek apakah domain email termasuk provider resmi
+  if (!isOfficialEmail(cleanEmail)) {
+    return res.status(400).json({
+      success: false,
+      code: 'UNSUPPORTED_EMAIL_DOMAIN',
+      message: 'Gunakan email resmi (seperti @gmail.com, @yahoo.com, @outlook.com, @icloud.com, atau email kampus .ac.id).'
     });
   }
 
@@ -66,6 +102,14 @@ router.post('/register', async (req, res) => {
       success: false,
       code: 'INVALID_PASSWORD',
       message: 'Password minimal 8 karakter.'
+    });
+  }
+
+  if (password !== confirmPassword) {
+    return res.status(400).json({
+      success: false,
+      code: 'PASSWORD_MISMATCH',
+      message: 'Password dan konfirmasi password tidak sama.'
     });
   }
 
@@ -117,7 +161,6 @@ router.post('/register', async (req, res) => {
 });
 
 // POST /api/auth/login
-
 router.post('/login', async (req, res) => {
   const { email, name, password } = req.body ?? {};
 
@@ -132,7 +175,7 @@ router.post('/login', async (req, res) => {
     return res.status(400).json({
       success: false,
       code: 'INVALID_INPUT',
-      message: 'Email atau nama dan password wajib diisi.'
+      message: 'Email atau Nama dan Password wajib diisi.'
     });
   }
 
@@ -143,7 +186,7 @@ router.post('/login', async (req, res) => {
     return res.status(400).json({
       success: false,
       code: 'INVALID_INPUT',
-      message: 'Email/nama atau password tidak valid.'
+      message: 'Email/Nama atau password tidak valid.'
     });
   }
 
@@ -185,7 +228,7 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({
         success: false,
         code: 'INVALID_CREDENTIALS',
-        message: 'Email/nama atau password salah.'
+        message: 'Email/Nama atau Password salah.'
       });
     }
 
@@ -225,6 +268,5 @@ router.post('/login', async (req, res) => {
     });
   }
 });
-
 
 export default router;

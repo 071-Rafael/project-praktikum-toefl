@@ -1,4 +1,6 @@
+import 'dotenv/config';
 import express from 'express';
+import cors from 'cors'; // <-- 1. Import cors
 import authRoutes from './routes/auth.js';
 import examRoutes from './routes/exam.js';
 import { db } from '../db/connection.js';
@@ -7,6 +9,8 @@ import { sql } from 'drizzle-orm';
 const app = express();
 const port = Number(process.env.PORT ?? 3000);
 
+// <-- 2. Pasang cors sebelum routes supaya frontend (port 5173) diizinkan mengakses
+app.use(cors());
 app.use(express.json());
 
 app.get('/api/health', (_req, res) => {
