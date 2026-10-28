@@ -1,7 +1,7 @@
 import express from 'express';
 import authRoutes from './routes/auth.js';
-import examRoutes from './routes/exam.js/index.js';
-import { db } from './db/connection.js';
+import examRoutes from './routes/exam.js';
+import { db } from '../db/connection.js';
 import { sql } from 'drizzle-orm';
 
 const app = express();

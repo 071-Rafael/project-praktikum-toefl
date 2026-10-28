@@ -4,14 +4,14 @@ import { eq } from 'drizzle-orm';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
-import { db } from '../db/connection.js';
-import { users } from '../db/schema.js';
+import { db } from '../../db/connection.js';
+import { users } from '../../db/schema.js';
 
 const router = Router();
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-function isDuplicateEmailError(error: unknown): boolean {
+function isDuplicateEmailError(error) {
   return (
     typeof error === 'object' &&
     error !== null &&
@@ -97,7 +97,7 @@ router.post('/register', async (req, res) => {
       code: 'REGISTERED',
       message: 'Pendaftaran akun berhasil! Silakan login.'
     });
-  } catch (error: unknown) {
+  } catch (error) {
     if (isDuplicateEmailError(error)) {
       return res.status(409).json({
         success: false,
@@ -117,41 +117,39 @@ router.post('/register', async (req, res) => {
 });
 
 // POST /api/auth/login
-router.post('/login', async (req, res) => {
-  const { email, password } = req.body ?? {};
 
-  if (
-    typeof email !== 'string' ||
-    typeof password !== 'string' ||
-    !email.trim() ||
-    !password
-  ) {
+router.post('/login', async (req, res) => {
+  const { email, name, password } = req.body ?? {};
+
+  const identifier =
+    typeof email === 'string' && email.trim()
+      ? email.trim()
+      : typeof name === 'string'
+        ? name.trim()
+        : '';
+
+  if (!identifier || typeof password !== 'string' || !password) {
     return res.status(400).json({
       success: false,
       code: 'INVALID_INPUT',
-      message: 'Email dan password wajib diisi.'
+      message: 'Email atau nama dan password wajib diisi.'
     });
   }
 
-  const cleanEmail = email.trim().toLowerCase();
-
   if (
-    cleanEmail.length > 191 ||
-    !emailPattern.test(cleanEmail) ||
+    identifier.length > 191 ||
     Buffer.byteLength(password, 'utf8') > 72
   ) {
     return res.status(400).json({
       success: false,
       code: 'INVALID_INPUT',
-      message: 'Format email atau password tidak valid.'
+      message: 'Email/nama atau password tidak valid.'
     });
   }
 
   const jwtSecret = process.env.JWT_SECRET;
 
   if (!jwtSecret || jwtSecret.length < 32) {
-    console.error('JWT_SECRET belum dikonfigurasi dengan benar.');
-
     return res.status(500).json({
       success: false,
       code: 'SERVER_CONFIG_ERROR',
@@ -160,6 +158,8 @@ router.post('/login', async (req, res) => {
   }
 
   try {
+    const isEmail = identifier.includes('@');
+
     const foundUsers = await db
       .select({
         id: users.id,
@@ -169,37 +169,28 @@ router.post('/login', async (req, res) => {
         role: users.role
       })
       .from(users)
-      .where(eq(users.email, cleanEmail))
+      .where(
+        isEmail
+          ? eq(users.email, identifier.toLowerCase())
+          : eq(users.name, identifier)
+      )
       .limit(1);
 
     const user = foundUsers[0];
 
-    if (!user) {
+    if (
+      !user ||
+      !(await bcrypt.compare(password, user.passwordHash))
+    ) {
       return res.status(401).json({
         success: false,
         code: 'INVALID_CREDENTIALS',
-        message: 'Email atau password salah.'
-      });
-    }
-
-    const passwordMatches = await bcrypt.compare(
-      password,
-      user.passwordHash
-    );
-
-    if (!passwordMatches) {
-      return res.status(401).json({
-        success: false,
-        code: 'INVALID_CREDENTIALS',
-        message: 'Email atau password salah.'
+        message: 'Email/nama atau password salah.'
       });
     }
 
     const token = jwt.sign(
-      {
-        sub: String(user.id),
-        role: user.role
-      },
+      { sub: String(user.id), role: user.role },
       jwtSecret,
       {
         expiresIn: '2h',
@@ -224,7 +215,7 @@ router.post('/login', async (req, res) => {
         }
       }
     });
-  } catch (error: unknown) {
+  } catch (error) {
     console.error('Login error:', error);
 
     return res.status(500).json({
@@ -234,5 +225,6 @@ router.post('/login', async (req, res) => {
     });
   }
 });
+
 
 export default router;
