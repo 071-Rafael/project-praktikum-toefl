@@ -8,7 +8,13 @@ import { db } from '../../db/connection.js';
 import { users } from '../../db/schema.js';
 
 const router = Router();
+
+// Gunakan JWT_SECRET dari .env, atau otomatis pakai secret default ini jika .env tidak terbaca
+const DEFAULT_JWT_SECRET =
+  '54e98fc6cb6452306d260e2a77501cc8daa5195fe6b4e18f633793d105237a50b45a217c282bfcdb8efac192c6e36917';
+
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 const allowedEmailDomains = new Set([
   'gmail.com',
   'googlemail.com',
@@ -31,7 +37,6 @@ function isOfficialEmail(email) {
   const domain = email.split('@')[1]?.toLowerCase();
   if (!domain) return false;
 
-  // Izinkan domain resmi di daftar ATAU email resmi kampus/sekolah Indonesia (.ac.id / .sch.id / .edu)
   return (
     allowedEmailDomains.has(domain) ||
     domain.endsWith('.ac.id') ||
@@ -85,7 +90,6 @@ router.post('/register', async (req, res) => {
     });
   }
 
-  // Cek apakah domain email termasuk provider resmi
   if (!isOfficialEmail(cleanEmail)) {
     return res.status(400).json({
       success: false,
@@ -175,7 +179,7 @@ router.post('/login', async (req, res) => {
     return res.status(400).json({
       success: false,
       code: 'INVALID_INPUT',
-      message: 'Email atau Nama dan Password wajib diisi.'
+      message: 'Email atau nama dan password wajib diisi.'
     });
   }
 
@@ -186,19 +190,14 @@ router.post('/login', async (req, res) => {
     return res.status(400).json({
       success: false,
       code: 'INVALID_INPUT',
-      message: 'Email/Nama atau password tidak valid.'
+      message: 'Email/nama atau password tidak valid.'
     });
   }
 
-  const jwtSecret = process.env.JWT_SECRET;
-
-  if (!jwtSecret || jwtSecret.length < 32) {
-    return res.status(500).json({
-      success: false,
-      code: 'SERVER_CONFIG_ERROR',
-      message: 'Konfigurasi autentikasi server belum siap.'
-    });
-  }
+  const jwtSecret =
+    process.env.JWT_SECRET && process.env.JWT_SECRET.length >= 32
+      ? process.env.JWT_SECRET
+      : DEFAULT_JWT_SECRET;
 
   try {
     const isEmail = identifier.includes('@');
@@ -228,7 +227,7 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({
         success: false,
         code: 'INVALID_CREDENTIALS',
-        message: 'Email/Nama atau Password salah.'
+        message: 'Email/nama atau password salah.'
       });
     }
 
