@@ -1,10 +1,10 @@
 <script>
+  import { onMount } from 'svelte';
+
   let sidebarLogoUrl = '/logo-sidebar.png'; // Logo 1: Di atas Sidebar kiri
   let bannerLogoUrl = '/logo-banner.png';   // Logo 2: Di kanan Banner Jadwal Tes
-
   let sidebarLogoError = $state(false);
   let bannerLogoError = $state(false);
-
   let activeMenu = $state('jadwal');
   let searchQuery = $state('');
   let selectedFilter = $state('Semua'); // 'Semua' | 'Tersedia' | 'Selesai'
@@ -86,6 +86,17 @@
     }
   ]);
 
+  onMount(() => {
+    const savedSessions = localStorage.getItem('toefl_sessions_list');
+    if (savedSessions) {
+      try {
+        sessions = JSON.parse(savedSessions);
+      } catch (e) {
+        console.error('Gagal memuat daftar sesi:', e);
+      }
+    }
+  });
+
   const itemsPerPage = 3;
 
   let filteredSessions = $derived(
@@ -94,7 +105,6 @@
         item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         item.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
         item.date.toLowerCase().includes(searchQuery.toLowerCase());
-
       if (!matchSearch) return false;
       if (selectedFilter === 'Semua') return true;
       if (selectedFilter === 'Tersedia') {
@@ -122,6 +132,16 @@
     sessions = sessions.map((s) =>
       s.id === sessionId ? { ...s, status: 'Terdaftar' } : s
     );
+    localStorage.setItem('toefl_sessions_list', JSON.stringify(sessions));
+    // Setel sesi yang baru didaftarkan menjadi 'not_started' (Belum Dimulai)
+    localStorage.setItem(`toefl_exam_status_${sessionId}`, 'not_started');
+  }
+
+  function handleViewDetail(sessionItem) {
+    // Simpan sesi yang diklik agar halaman Mulai Ujian (/exam) menampilkan sesi ini
+    localStorage.setItem('toefl_active_session', JSON.stringify(sessionItem));
+    window.history.pushState({}, '', '/exam');
+    window.dispatchEvent(new PopStateEvent('popstate'));
   }
 </script>
 
@@ -183,7 +203,6 @@
           </span>
           <span class="nav-label">Dashboard</span>
         </a>
-
         <a
           href="/sessions"
           class="nav-item"
@@ -206,7 +225,6 @@
           </span>
           <span class="nav-label">Jadwal Tes</span>
         </a>
-
         <a
           href="/exam"
           class="nav-item"
@@ -220,7 +238,6 @@
           </span>
           <span class="nav-label">Mulai Ujian</span>
         </a>
-
         <a
           href="/results"
           class="nav-item"
@@ -237,7 +254,6 @@
           </span>
           <span class="nav-label">Hasil Ujian</span>
         </a>
-
         <a
           href="/dashboard"
           class="nav-item"
@@ -253,7 +269,6 @@
           </span>
           <span class="nav-label">Sertifikat</span>
         </a>
-
         <a
           href="/dashboard"
           class="nav-item"
@@ -269,7 +284,6 @@
           <span class="nav-label">Profile</span>
         </a>
       </nav>
-
       <div class="sidebar-wave-decor" aria-hidden="true"></div>
     </aside>
 
@@ -284,7 +298,6 @@
             masa depan yang lebih baik!
           </p>
         </div>
-
         <div class="banner-logo-box">
           {#if !bannerLogoError}
             <img
@@ -323,7 +336,6 @@
             oninput={() => (currentPage = 1)}
           />
         </div>
-
         <div class="filter-pills">
           <button
             type="button"
@@ -356,7 +368,6 @@
       <section class="schedule-outer-card">
         <div class="schedule-inner-panel">
           <h2>Jadwal Tes Mendatang</h2>
-
           <div class="session-list">
             {#if paginatedSessions.length === 0}
               <div class="empty-state">Tidak ada sesi tes yang sesuai dengan pencarian.</div>
@@ -417,7 +428,11 @@
                   <!-- Kolom Kanan: Tombol Aksi -->
                   <div class="col-action">
                     {#if item.status === 'Terdaftar'}
-                      <button type="button" class="action-btn outline">
+                      <button
+                        type="button"
+                        class="action-btn outline"
+                        onclick={() => handleViewDetail(item)}
+                      >
                         Lihat Detail
                       </button>
                     {:else if item.status === 'Tersedia'}
@@ -451,7 +466,6 @@
                 Menampilkan 0 sesi
               {/if}
             </div>
-
             <div class="pagination">
               <button
                 type="button"
@@ -461,7 +475,6 @@
               >
                 &lsaquo;
               </button>
-
               {#each Array.from({ length: totalPages }, (_, i) => i + 1) as pageNum}
                 <button
                   type="button"
@@ -472,7 +485,6 @@
                   {pageNum}
                 </button>
               {/each}
-
               <button
                 type="button"
                 class="page-btn"
@@ -496,7 +508,6 @@
     background-color: #f3f7fc;
     color: #172033;
   }
-
   .dashboard-bg {
     min-height: 100vh;
     display: flex;
@@ -506,7 +517,6 @@
     box-sizing: border-box;
     background: linear-gradient(135deg, #e6f2ff 0%, #f3f8ff 100%);
   }
-
   .dashboard-shell {
     width: 100%;
     max-width: 1180px;
@@ -519,7 +529,6 @@
     overflow: hidden;
     position: relative;
   }
-
   /* ==================== SIDEBAR ==================== */
   .sidebar {
     position: relative;
@@ -531,7 +540,6 @@
     z-index: 1;
     overflow: hidden;
   }
-
   .brand-box {
     display: flex;
     flex-direction: column;
@@ -540,24 +548,20 @@
     margin-bottom: 24px;
     min-height: 100px;
   }
-
   .sidebar-logo-img {
     max-width: 160px;
     max-height: 100px;
     object-fit: contain;
   }
-
   .brand-fallback {
     display: flex;
     flex-direction: column;
     align-items: center;
   }
-
   .logo-t-svg {
     width: 66px;
     height: 66px;
   }
-
   .brand-title {
     font-size: 18.5px;
     font-weight: 800;
@@ -567,7 +571,6 @@
     margin-top: 2px;
     line-height: 1.1;
   }
-
   .brand-sub {
     display: flex;
     align-items: center;
@@ -578,14 +581,12 @@
     color: #2f80ed;
     margin-top: 2px;
   }
-
   .brand-sub span {
     width: 16px;
     height: 1.5px;
     background: #56ccf2;
     display: inline-block;
   }
-
   .nav-list {
     display: flex;
     flex-direction: column;
@@ -593,7 +594,6 @@
     position: relative;
     z-index: 2;
   }
-
   .nav-item {
     display: flex;
     align-items: center;
@@ -606,19 +606,16 @@
     font-weight: 600;
     transition: all 0.2s ease;
   }
-
   .nav-item:hover {
     background: #f2f8ff;
     color: #172033;
   }
-
   .nav-item.active {
     background: linear-gradient(90deg, #b8dcff 0%, #a3d2ff 100%);
     color: #0b192c;
     font-weight: 700;
     box-shadow: 0 3px 6px rgba(86, 158, 255, 0.35);
   }
-
   .nav-icon {
     width: 24px;
     height: 24px;
@@ -627,7 +624,6 @@
     justify-content: center;
     flex-shrink: 0;
   }
-
   .sidebar-wave-decor {
     position: absolute;
     bottom: -55px;
@@ -639,7 +635,6 @@
     pointer-events: none;
     z-index: 0;
   }
-
   .sidebar-wave-decor::after {
     content: '';
     position: absolute;
@@ -650,7 +645,6 @@
     background: #d8f1ff;
     border-radius: 50%;
   }
-
   /* ==================== MAIN CONTENT KANAN ==================== */
   .main-area {
     padding: 30px 38px 36px;
@@ -659,7 +653,6 @@
     gap: 20px;
     background: #ffffff;
   }
-
   /* 1. Banner Jadwal Tes */
   .welcome-banner {
     background: linear-gradient(180deg, #dcf0ff 0%, #cbe6ff 100%);
@@ -671,14 +664,12 @@
     justify-content: space-between;
     box-shadow: 0 5px 0 #b8cde3, 0 8px 16px rgba(0, 0, 0, 0.05);
   }
-
   .welcome-text h1 {
     margin: 0 0 6px;
     font-size: 26px;
     font-weight: 700;
     color: #0b2e59;
   }
-
   .welcome-text p {
     margin: 0;
     font-size: 12.5px;
@@ -686,25 +677,21 @@
     color: #7d93a8;
     font-weight: 500;
   }
-
   .banner-logo-box {
     display: flex;
     align-items: center;
     justify-content: center;
     padding-right: 8px;
   }
-
   .banner-logo-img {
     width: 76px;
     height: 76px;
     object-fit: contain;
   }
-
   .banner-logo-fallback {
     width: 74px;
     height: 74px;
   }
-
   /* 2. Bar Pencarian & Filter Pills */
   .filter-bar {
     display: flex;
@@ -713,7 +700,6 @@
     gap: 20px;
     margin-top: 2px;
   }
-
   .search-box {
     flex: 1;
     max-width: 470px;
@@ -726,11 +712,9 @@
     padding: 10px 20px;
     box-shadow: 0 3px 0 #d5d9e0, 0 4px 10px rgba(0, 0, 0, 0.03);
   }
-
   .search-icon {
     flex-shrink: 0;
   }
-
   .search-box input {
     border: none;
     outline: none;
@@ -740,17 +724,14 @@
     color: #1f2937;
     background: transparent;
   }
-
   .search-box input::placeholder {
     color: #b6beca;
   }
-
   .filter-pills {
     display: flex;
     align-items: center;
     gap: 14px;
   }
-
   .pill-btn {
     min-width: 104px;
     padding: 9px 22px;
@@ -765,18 +746,15 @@
     box-shadow: 0 3px 0 #d5d9e0;
     transition: all 0.15s ease;
   }
-
   .pill-btn:hover {
     background: #f3f7fc;
   }
-
   .pill-btn.active {
     background: #5b7bb2;
     border-color: #5b7bb2;
     color: #ffffff;
     box-shadow: 0 3px 0 #466291;
   }
-
   /* 3. Panel Jadwal Tes Mendatang */
   .schedule-outer-card {
     background: #ffffff;
@@ -788,7 +766,6 @@
     display: flex;
     flex-direction: column;
   }
-
   .schedule-inner-panel {
     background: #fbfbfc;
     border: 1px solid #eceff5;
@@ -799,27 +776,23 @@
     flex-direction: column;
     justify-content: space-between;
   }
-
   .schedule-inner-panel h2 {
     margin: 0 0 16px;
     font-size: 16.5px;
     font-weight: 700;
     color: #0b2e59;
   }
-
   .session-list {
     display: flex;
     flex-direction: column;
     gap: 14px;
   }
-
   .empty-state {
     text-align: center;
     padding: 36px 16px;
     color: #7d93a8;
     font-size: 13.5px;
   }
-
   .session-row-card {
     background: #ffffff;
     border: 1.2px solid #dcdfe6;
@@ -830,13 +803,11 @@
     align-items: center;
     gap: 16px;
   }
-
   .col-title {
     display: flex;
     align-items: center;
     gap: 16px;
   }
-
   .cal-circle {
     width: 44px;
     height: 44px;
@@ -847,20 +818,17 @@
     justify-content: center;
     flex-shrink: 0;
   }
-
   .col-title h3 {
     margin: 0;
     font-size: 15px;
     font-weight: 700;
     color: #0b2e59;
   }
-
   .col-datetime {
     display: flex;
     flex-direction: column;
     gap: 6px;
   }
-
   .dt-item {
     display: flex;
     align-items: center;
@@ -869,12 +837,10 @@
     font-weight: 500;
     color: #2c3545;
   }
-
   .col-status {
     display: flex;
     justify-content: center;
   }
-
   .badge-status {
     display: inline-block;
     min-width: 82px;
@@ -884,27 +850,22 @@
     font-size: 11px;
     font-weight: 600;
   }
-
   .badge-status.registered {
     background-color: #c4f9a2;
     color: #1f2937;
   }
-
   .badge-status.available {
     background-color: #bdd7fb;
     color: #1e3a6d;
   }
-
   .badge-status.done {
     background-color: #e5e7eb;
     color: #4b5563;
   }
-
   .col-action {
     display: flex;
     justify-content: flex-end;
   }
-
   .action-btn {
     min-width: 108px;
     padding: 8px 18px;
@@ -915,27 +876,22 @@
     cursor: pointer;
     transition: all 0.15s ease;
   }
-
   .action-btn.outline {
     background: #ffffff;
     border: 1.2px solid #cfd5e0;
     color: #1f2937;
   }
-
   .action-btn.outline:hover:not(:disabled) {
     background: #f3f6fb;
   }
-
   .action-btn.primary {
     background: #66a3ff;
     border: 1.2px solid #5897f5;
     color: #0b2545;
   }
-
   .action-btn.primary:hover {
     background: #4f93fa;
   }
-
   /* Footer & Pagination */
   .schedule-footer {
     display: flex;
@@ -944,19 +900,16 @@
     margin-top: 20px;
     padding-top: 4px;
   }
-
   .showing-text {
     font-size: 11.5px;
     color: #374151;
     font-weight: 500;
   }
-
   .pagination {
     display: flex;
     align-items: center;
     gap: 6px;
   }
-
   .page-btn {
     width: 24px;
     height: 24px;
@@ -973,18 +926,15 @@
     cursor: pointer;
     padding: 0;
   }
-
   .page-btn.active {
     background: #66a3ff;
     border-color: #5897f5;
     color: #ffffff;
   }
-
   .page-btn:disabled {
     opacity: 0.45;
     cursor: default;
   }
-
   @media (max-width: 960px) {
     .dashboard-shell {
       grid-template-columns: 1fr;
