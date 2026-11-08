@@ -2,6 +2,7 @@
   import LoginPage from './routes/login/+page.svelte';
   import RegisterPage from './routes/register/+page.svelte';
   import DashboardPage from './routes/dashboard/+page.svelte';
+  import SessionsPage from './routes/sessions/+page.svelte';
 
   let currentPath = $state(window.location.pathname);
 
@@ -29,6 +30,8 @@
   <RegisterPage />
 {:else if currentPath === '/dashboard'}
   <DashboardPage />
+{:else if currentPath === '/sessions'}
+  <SessionsPage />
 {:else}
   <LoginPage />
 {/if}
