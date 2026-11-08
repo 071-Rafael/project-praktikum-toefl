@@ -1,51 +1,25 @@
 <script>
   import { onMount } from 'svelte';
-
-  // =========================================================================
-  // TEMPAT MEMASANG 2 LOGO KAMU (Simpan gambarnya di folder web/public/)
-  // =========================================================================
   let sidebarLogoUrl = '/logo-sidebar.png'; // Logo 1: Di atas Sidebar kiri
   let bannerLogoUrl = '/logo-banner.png';   // Logo 2: Di kanan Banner Selamat Datang
+  let cardLogoUrl = '/logo-card.png';       // Logo 3: Logo T silver/ungu di Ujian Terdekat
+  let resultLogoUrl = '/logo-result.png';   // Logo 4: Ilustrasi TOEFL di Hasil Ujian Akhir (Kanan Bawah)
 
   let sidebarLogoError = $state(false);
   let bannerLogoError = $state(false);
+  let cardLogoError = $state(false);
+  let resultLogoError = $state(false);
 
-  // Nama default ("Abel"), otomatis berubah mengikuti user yang login di localStorage
-  let userName = $state('Abel');
+  // Nama default, otomatis berubah mengikuti user yang login di localStorage
+  let userName = $state('Anonymous');
   let activeMenu = $state('dashboard');
 
-  const upcomingSessions = [
-    {
-      id: 1,
-      title: 'TOEFL-Sesi 1',
-      institution: 'Universitas Madura (UNIRA)',
-      date: '12 Mei 2026',
-      time: '12.00 - 13.00 WIB',
-      status: 'Terdaftar',
-      actionText: 'Lihat Detail',
-      isRegistered: true
-    },
-    {
-      id: 2,
-      title: 'TOEFL-Sesi 2',
-      institution: 'Universitas Madura (UNIRA)',
-      date: '21 Mei 2026',
-      time: '13.00 - 15.00 WIB',
-      status: 'Tersedia',
-      actionText: 'Daftar Tes',
-      isRegistered: false
-    },
-    {
-      id: 3,
-      title: 'TOEFL-Sesi 3',
-      institution: 'Universitas Madura (UNIRA)',
-      date: '13 Juni 2026',
-      time: '08.00 - 10.00 WIB',
-      status: 'Tersedia',
-      actionText: 'Daftar Tes',
-      isRegistered: false
-    }
-  ];
+  const nearestExam = {
+    title: 'TOEFL-Sesi 1',
+    date: '12 Mei 2026',
+    time: '12.00 - 13.00 WIB',
+    status: 'Terdaftar'
+  };
 
   onMount(() => {
     try {
@@ -247,12 +221,12 @@
         </div>
       </section>
 
-      <!-- 2. TIGA KARTU MENU CEPAT -->
+      <!-- 2. TIGA KARTU MENU CEPAT (HORIZONTAL) -->
       <section class="summary-cards">
-        <!-- Kartu 1: Jadwal Tes -->
+        <!-- Kartu 1: Ujian Terdaftar -->
         <div class="info-card">
           <div class="circle-badge badge-blue">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#111" stroke-width="2">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#111" stroke-width="2">
               <rect x="3" y="4" width="18" height="17" rx="2" />
               <line x1="8" y1="2" x2="8" y2="6" />
               <line x1="16" y1="2" x2="16" y2="6" />
@@ -265,105 +239,170 @@
               <circle cx="16" cy="17" r="1" fill="#111" />
             </svg>
           </div>
-          <h3>Jadwal Tes</h3>
-          <p>Lihat jadwal sesi tes yang tersedia untuk kamu</p>
+          <h3>Ujian Terdaftar</h3>
         </div>
 
-        <!-- Kartu 2: Status Pendaftaran -->
+        <!-- Kartu 2: Ujian Selesai -->
         <div class="info-card">
           <div class="circle-badge badge-green">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#111" stroke-width="2">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#111" stroke-width="2">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
               <polyline points="14 2 14 8 20 8" />
-              <line x1="8" y1="13" x2="16" y2="13" />
-              <line x1="8" y1="17" x2="13" y2="17" />
+              <line x1="9" y1="14" x2="15" y2="14" />
             </svg>
           </div>
-          <h3>Status Pendaftaran</h3>
-          <p>Cek status pendaftaran kamu di sesi tes yang dipilih</p>
+          <h3>Ujian Selesai</h3>
         </div>
 
         <!-- Kartu 3: Hasil Ujian -->
         <div class="info-card">
           <div class="circle-badge badge-purple">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#111" stroke-width="2.4" stroke-linecap="round">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#111" stroke-width="2.6" stroke-linecap="round">
               <line x1="7" y1="18" x2="7" y2="12" />
               <line x1="12" y1="18" x2="12" y2="6" />
-              <line x1="17" y1="18" x2="17" y2="14" />
+              <line x1="17" y1="18" x2="17" y2="13" />
             </svg>
           </div>
           <h3>Hasil Ujian</h3>
-          <p>Lihat hasil ujian dan perkembangan skor kamu</p>
         </div>
       </section>
 
-      <!-- 3. PANEL JADWAL TES MENDATANG -->
-      <section class="upcoming-container">
-        <h2>Jadwal Tes Mendatang</h2>
+      <!-- 3. GRID BAWAH: UJIAN TERDEKAT (KIRI) & HASIL UJIAN AKHIR (KANAN) -->
+      <section class="bottom-grid">
+        <!-- KIRI: Ujian Terdekat -->
+        <div class="nearest-exam-card">
+          <div class="card-header">
+            <div class="header-left">
+              <div class="circle-badge-sm badge-soft-blue">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#111" stroke-width="2">
+                  <rect x="3" y="4" width="18" height="17" rx="2" />
+                  <line x1="8" y1="2" x2="8" y2="6" />
+                  <line x1="16" y1="2" x2="16" y2="6" />
+                  <line x1="3" y1="9" x2="21" y2="9" />
+                  <circle cx="8" cy="13" r="1" fill="#111" />
+                  <circle cx="12" cy="13" r="1" fill="#111" />
+                  <circle cx="16" cy="13" r="1" fill="#111" />
+                  <circle cx="8" cy="17" r="1" fill="#111" />
+                  <circle cx="12" cy="17" r="1" fill="#111" />
+                  <circle cx="16" cy="17" r="1" fill="#111" />
+                </svg>
+              </div>
+              <h2>Ujian Terdekat</h2>
+            </div>
 
-        <div class="session-list">
-          {#each upcomingSessions as item (item.id)}
-            <div class="session-row">
-              <!-- Kiri: Icon Kalender Biru + Nama Sesi & Kampus -->
-              <div class="session-left">
-                <div class="circle-badge badge-blue">
-                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#111" stroke-width="2">
-                    <rect x="3" y="4" width="18" height="17" rx="2" />
-                    <line x1="8" y1="2" x2="8" y2="6" />
-                    <line x1="16" y1="2" x2="16" y2="6" />
-                    <line x1="3" y1="9" x2="21" y2="9" />
-                    <circle cx="8" cy="13" r="1" fill="#111" />
-                    <circle cx="12" cy="13" r="1" fill="#111" />
-                    <circle cx="16" cy="13" r="1" fill="#111" />
-                    <circle cx="8" cy="17" r="1" fill="#111" />
-                    <circle cx="12" cy="17" r="1" fill="#111" />
-                    <circle cx="16" cy="17" r="1" fill="#111" />
+            <a href="/sessions" class="detail-link">
+              Lihat Detail <span>&rsaquo;</span>
+            </a>
+          </div>
+
+          <!-- Kotak Dalam Abu-abu Muda -->
+          <div class="inner-session-box">
+            <div class="session-content">
+              <!-- TEMPAT LOGO 3: Logo Silver / Ungu di Kiri Dalam Kartu -->
+              <div class="session-logo-wrap">
+                {#if !cardLogoError}
+                  <img
+                    src={cardLogoUrl}
+                    alt="Logo Sesi TOEFL"
+                    class="session-logo-img"
+                    onerror={() => (cardLogoError = true)}
+                  />
+                {:else}
+                  <svg class="session-logo-fallback" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                      <linearGradient id="silverGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="#c3cfe2" />
+                        <stop offset="50%" stop-color="#a1b0cb" />
+                        <stop offset="100%" stop-color="#868f96" />
+                      </linearGradient>
+                      <linearGradient id="ringSoftGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" stop-color="#b8c6db" />
+                        <stop offset="100%" stop-color="#d9c2ff" />
+                      </linearGradient>
+                    </defs>
+                    <path d="M22 28L78 16L73 33L56 37L56 85L39 90L39 41L20 45L22 28Z" fill="url(#silverGrad)" />
+                    <ellipse cx="50" cy="52" rx="38" ry="12" transform="rotate(-22 50 52)" stroke="url(#ringSoftGrad)" stroke-width="5" fill="none" />
+                    <path d="M82 14L85 21L92 24L85 27L82 34L79 27L72 24L79 21L82 14Z" fill="#b8c6db" />
                   </svg>
-                </div>
-                <div class="session-title-group">
-                  <h4>{item.title}</h4>
-                  <p>{item.institution}</p>
-                </div>
+                {/if}
               </div>
 
-              <!-- Tengah: Tanggal & Jam -->
-              <div class="session-datetime">
-                <div class="dt-row">
-                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#555" stroke-width="1.8">
-                    <rect x="3" y="4" width="18" height="17" rx="2" />
-                    <line x1="3" y1="9" x2="21" y2="9" />
-                  </svg>
-                  <span>{item.date}</span>
+              <!-- Info Sesi & Badge Status -->
+              <div class="session-info">
+                <div class="session-top-row">
+                  <h4>{nearestExam.title}</h4>
+                  <span class="status-pill registered">{nearestExam.status}</span>
                 </div>
-                <div class="dt-row">
-                  <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="#222" stroke-width="2">
-                    <circle cx="12" cy="12" r="9" />
-                    <polyline points="12 7 12 12 15 14" />
-                  </svg>
-                  <span class="dt-time">{item.time}</span>
+
+                <div class="session-meta">
+                  <div class="meta-item">
+                    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#4b5563" stroke-width="1.8">
+                      <rect x="3" y="4" width="18" height="17" rx="2" />
+                      <line x1="8" y1="2" x2="8" y2="6" />
+                      <line x1="16" y1="2" x2="16" y2="6" />
+                      <line x1="3" y1="9" x2="21" y2="9" />
+                    </svg>
+                    <span>{nearestExam.date}</span>
+                  </div>
+                  <div class="meta-item">
+                    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#111827" stroke-width="2">
+                      <circle cx="12" cy="12" r="9" />
+                      <polyline points="12 7 12 12 15 14" />
+                    </svg>
+                    <span class="meta-time">{nearestExam.time}</span>
+                  </div>
                 </div>
-              </div>
-
-              <!-- Status Pill: Terdaftar / Tersedia -->
-              <div class="session-status">
-                <span class="status-pill" class:registered={item.isRegistered}>
-                  {item.status}
-                </span>
-              </div>
-
-              <!-- Kanan: Tombol Lihat Detail / Daftar Tes -->
-              <div class="session-action">
-                <button
-                  type="button"
-                  class="action-btn"
-                  class:outline={item.isRegistered}
-                  class:primary={!item.isRegistered}
-                >
-                  {item.actionText}
-                </button>
               </div>
             </div>
-          {/each}
+
+            <button type="button" class="full-detail-btn">
+              Lihat Detail <span class="arrow">&rsaquo;</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- KANAN: Hasil Ujian Akhir -->
+        <div class="final-result-card">
+          <h3>Hasil Ujian Akhir</h3>
+
+          <!-- TEMPAT LOGO 4: Ilustrasi Clipboard TOEFL (Kanan Bawah) -->
+          <div class="illustration-box">
+            {#if !resultLogoError}
+              <img
+                src={resultLogoUrl}
+                alt="Ilustrasi Hasil Ujian TOEFL"
+                class="result-logo-img"
+                onerror={() => (resultLogoError = true)}
+              />
+            {:else}
+              <svg viewBox="0 0 180 120" width="150" height="105" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path
+                  d="M35 95C20 95 10 83 12 68C14 55 26 47 38 49C45 33 64 24 83 28C99 18 122 22 132 38C148 36 164 47 166 63C168 80 155 95 138 95H35Z"
+                  fill="#dce8fc"
+                />
+                <rect x="58" y="20" width="64" height="84" rx="7" fill="#8bb4f8" stroke="#6ea0f2" stroke-width="2" />
+                <rect x="65" y="29" width="50" height="68" rx="4" fill="#ffffff" />
+                <rect x="76" y="14" width="28" height="11" rx="3.5" fill="#5e7ce2" />
+                <circle cx="90" cy="14" r="3.5" fill="#dce8fc" />
+                <text x="90" y="52" text-anchor="middle" fill="#0b2e59" font-family="Poppins, sans-serif" font-weight="800" font-size="12">TOEFL</text>
+                <rect x="73" y="59" width="34" height="3.5" rx="1.75" fill="#d0e0ff" />
+                <rect x="77" y="65" width="26" height="3.5" rx="1.75" fill="#d0e0ff" />
+                <circle cx="90" cy="82" r="9.5" fill="#9ec5fe" />
+                <text x="90" y="86.5" text-anchor="middle" fill="#ffffff" font-family="Poppins, sans-serif" font-weight="700" font-size="13">?</text>
+              </svg>
+            {/if}
+          </div>
+
+          <h4>Belum Tersedia</h4>
+          <p class="result-desc">
+            Hasil ujian akan ditampilkan<br />
+            setelah kamu menyelesaikan<br />
+            sesi tes.
+          </p>
+
+          <a href="/results" class="result-pill-btn">
+            Lihat Hasil Ujian <span>&rsaquo;</span>
+          </a>
         </div>
       </section>
     </main>
@@ -374,7 +413,7 @@
   :global(body) {
     margin: 0;
     font-family: 'Poppins', Arial, Helvetica, sans-serif;
-    background-color: #dbeeff;
+    background-color: #f3f7fc;
     color: #172033;
   }
 
@@ -383,20 +422,20 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 28px 36px;
+    padding: 24px 32px;
     box-sizing: border-box;
-    background: linear-gradient(135deg, #d7edff 0%, #eaf6ff 55%, #f5faff 100%);
+    background: linear-gradient(135deg, #e6f2ff 0%, #f3f8ff 100%);
   }
 
   .dashboard-shell {
     width: 100%;
     max-width: 1180px;
-    min-height: 760px;
+    min-height: 730px;
     background: #ffffff;
     border-radius: 26px;
-    box-shadow: 0 14px 36px rgba(18, 42, 76, 0.14);
+    box-shadow: 0 12px 34px rgba(18, 42, 76, 0.1);
     display: grid;
-    grid-template-columns: 245px 1fr;
+    grid-template-columns: 240px 1fr;
     overflow: hidden;
     position: relative;
   }
@@ -404,7 +443,7 @@
   /* ==================== SIDEBAR ==================== */
   .sidebar {
     position: relative;
-    border-right: 1.5px solid #e4e9f2;
+    border-right: 1.5px solid #e5e9f2;
     padding: 28px 18px 36px;
     display: flex;
     flex-direction: column;
@@ -418,13 +457,13 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    margin-bottom: 26px;
-    min-height: 105px;
+    margin-bottom: 24px;
+    min-height: 100px;
   }
 
   .sidebar-logo-img {
-    max-width: 165px;
-    max-height: 105px;
+    max-width: 160px;
+    max-height: 100px;
     object-fit: contain;
   }
 
@@ -435,12 +474,12 @@
   }
 
   .logo-t-svg {
-    width: 68px;
-    height: 68px;
+    width: 66px;
+    height: 66px;
   }
 
   .brand-title {
-    font-size: 19px;
+    font-size: 18.5px;
     font-weight: 800;
     font-style: italic;
     letter-spacing: 0.6px;
@@ -470,7 +509,7 @@
   .nav-list {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
     position: relative;
     z-index: 2;
   }
@@ -479,7 +518,7 @@
     display: flex;
     align-items: center;
     gap: 14px;
-    padding: 11px 16px;
+    padding: 10px 16px;
     border-radius: 12px;
     text-decoration: none;
     color: #8c8c8c;
@@ -497,7 +536,7 @@
     background: linear-gradient(90deg, #b8dcff 0%, #a3d2ff 100%);
     color: #0b192c;
     font-weight: 700;
-    box-shadow: 0 4px 10px rgba(86, 158, 255, 0.35);
+    box-shadow: 0 3px 6px rgba(86, 158, 255, 0.35);
   }
 
   .nav-icon {
@@ -513,9 +552,9 @@
     position: absolute;
     bottom: -55px;
     left: -45px;
-    width: 260px;
+    width: 250px;
     height: 170px;
-    background: radial-gradient(circle at 30% 70%, #bfe8ff 0%, #d4f0ff 65%, transparent 72%);
+    background: radial-gradient(circle at 30% 70%, #bce6ff 0%, #d4f0ff 65%, transparent 72%);
     border-radius: 50%;
     pointer-events: none;
     z-index: 0;
@@ -528,7 +567,7 @@
     right: -55px;
     width: 150px;
     height: 120px;
-    background: #d9f2ff;
+    background: #d8f1ff;
     border-radius: 50%;
   }
 
@@ -541,22 +580,23 @@
     background: #ffffff;
   }
 
+  /* 1. Banner Selamat Datang */
   .welcome-banner {
     background: linear-gradient(180deg, #dcf0ff 0%, #cbe6ff 100%);
     border: 1.5px solid #c2dfff;
     border-radius: 16px;
-    padding: 24px 36px;
+    padding: 22px 36px;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    box-shadow: 0 5px 0 #b8cde3, 0 8px 16px rgba(0, 0, 0, 0.06);
+    box-shadow: 0 5px 0 #b8cde3, 0 8px 16px rgba(0, 0, 0, 0.05);
   }
 
   .welcome-text h1 {
-    margin: 0 0 8px;
-    font-size: 27px;
+    margin: 0 0 6px;
+    font-size: 26px;
     font-weight: 700;
-    color: #0f2537;
+    color: #0b2e59;
   }
 
   .welcome-text p {
@@ -571,199 +611,320 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    padding-right: 12px;
+    padding-right: 8px;
   }
 
   .banner-logo-img {
-    width: 78px;
-    height: 78px;
+    width: 76px;
+    height: 76px;
     object-fit: contain;
   }
 
   .banner-logo-fallback {
-    width: 76px;
-    height: 76px;
+    width: 74px;
+    height: 74px;
   }
 
+  /* 2. Tiga Kartu Ringkasan (Horizontal) */
   .summary-cards {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 22px;
-    max-width: 820px;
   }
 
   .info-card {
     background: #ffffff;
     border: 1.5px solid #e4e7ec;
-    border-radius: 15px;
-    padding: 18px 20px 20px;
+    border-radius: 16px;
+    padding: 20px 22px;
     box-shadow: 4px 5px 0 #d5d9e0, 0 6px 14px rgba(0, 0, 0, 0.04);
     display: flex;
-    flex-direction: column;
-    align-items: flex-start;
+    flex-direction: row;
+    align-items: center;
+    gap: 16px;
   }
 
   .circle-badge {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .badge-blue {
+    background-color: #a9c7ff;
+  }
+
+  .badge-green {
+    background-color: #b4f77e;
+  }
+
+  .badge-purple {
+    background-color: #e39ff6;
+  }
+
+  .info-card h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+    color: #0b2e59;
+  }
+
+  /* 3. Grid Bawah (2 Kolom: Ujian Terdekat & Hasil Ujian Akhir) */
+  .bottom-grid {
+    display: grid;
+    grid-template-columns: 1.95fr 1fr;
+    gap: 22px;
+    align-items: stretch;
+  }
+
+  /* Panel Kiri: Ujian Terdekat */
+  .nearest-exam-card {
+    background: #ffffff;
+    border: 1.5px solid #e4e7ec;
+    border-radius: 16px;
+    padding: 20px 24px 24px;
+    box-shadow: 4px 5px 0 #d5d9e0, 0 8px 18px rgba(0, 0, 0, 0.04);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .circle-badge-sm {
     width: 38px;
     height: 38px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    flex-shrink: 0;
-    margin-bottom: 12px;
   }
 
-  .badge-blue {
-    background-color: #79a6f6;
+  .badge-soft-blue {
+    background-color: #cbdcf7;
   }
 
-  .badge-green {
-    background-color: #9be564;
-  }
-
-  .badge-purple {
-    background-color: #d580ff;
-  }
-
-  .info-card h3 {
-    margin: 0 0 6px;
-    font-size: 14px;
-    font-weight: 700;
-    color: #111827;
-  }
-
-  .info-card p {
+  .card-header h2 {
     margin: 0;
-    font-size: 11.5px;
-    line-height: 1.45;
-    color: #374151;
-  }
-
-  .upcoming-container {
-    background: #ffffff;
-    border: 1.5px solid #e4e7ec;
-    border-radius: 16px;
-    padding: 22px 26px 26px;
-    max-width: 800px;
-    box-shadow: 5px 6px 0 #d5d9e0, 0 8px 18px rgba(0, 0, 0, 0.04);
-  }
-
-  .upcoming-container h2 {
-    margin: 0 0 18px;
-    font-size: 16.5px;
+    font-size: 17px;
     font-weight: 700;
     color: #0b2e59;
   }
 
-  .session-list {
+  .detail-link {
+    text-decoration: none;
+    font-size: 12px;
+    font-weight: 600;
+    color: #2b4c7e;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .detail-link:hover {
+    text-decoration: underline;
+  }
+
+  /* Kotak Abu-abu di Dalam Ujian Terdekat */
+  .inner-session-box {
+    background: #f5f6f8;
+    border: 1.5px solid #e2e5ec;
+    border-radius: 14px;
+    padding: 22px 26px 20px;
     display: flex;
     flex-direction: column;
-    gap: 14px;
+    gap: 22px;
   }
 
-  .session-row {
-    display: grid;
-    grid-template-columns: 1.6fr 1.1fr 0.8fr auto;
-    align-items: center;
-    gap: 14px;
-    padding: 13px 18px;
-    border: 1.2px solid #e5e7eb;
-    border-radius: 12px;
-    background: #ffffff;
-  }
-
-  .session-left {
+  .session-content {
     display: flex;
     align-items: center;
-    gap: 14px;
+    gap: 26px;
   }
 
-  .session-left .circle-badge {
-    margin-bottom: 0;
-  }
-
-  .session-title-group h4 {
-    margin: 0 0 3px;
-    font-size: 13.5px;
-    font-weight: 700;
-    color: #0b2e59;
-  }
-
-  .session-title-group p {
-    margin: 0;
-    font-size: 11px;
-    color: #374151;
-  }
-
-  .session-datetime {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-    font-size: 11px;
-    color: #374151;
-  }
-
-  .dt-row {
+  .session-logo-wrap {
+    width: 96px;
+    height: 96px;
     display: flex;
     align-items: center;
-    gap: 6px;
-  }
-
-  .dt-time {
-    font-weight: 500;
-    color: #111827;
-  }
-
-  .session-status {
-    display: flex;
     justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .session-logo-img {
+    width: 90px;
+    height: 90px;
+    object-fit: contain;
+  }
+
+  .session-logo-fallback {
+    width: 88px;
+    height: 88px;
+  }
+
+  .session-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .session-top-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .session-top-row h4 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 700;
+    color: #0b2e59;
   }
 
   .status-pill {
     display: inline-block;
-    padding: 4px 18px;
+    padding: 4px 20px;
     border-radius: 999px;
-    font-size: 10.5px;
+    font-size: 13px;
     font-weight: 600;
-    background-color: #a4cafe;
-    color: #1e3a8a;
   }
 
   .status-pill.registered {
-    background-color: #b9fbc0;
-    color: #166534;
-  }
-
-  .action-btn {
-    min-width: 96px;
-    padding: 9px 16px;
-    border-radius: 8px;
-    font-family: inherit;
-    font-size: 11.5px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.15s ease;
-  }
-
-  .action-btn.outline {
-    background: #ffffff;
-    border: 1.2px solid #d1d5db;
+    background-color: #c4f9a2;
     color: #1f2937;
   }
 
-  .action-btn.outline:hover {
-    background: #f9fafb;
+  .session-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
   }
 
-  .action-btn.primary {
-    background: #5aa9fa;
-    border: 1.2px solid #5aa9fa;
-    color: #0f172a;
+  .meta-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13.5px;
+    color: #374151;
   }
 
-  .action-btn.primary:hover {
-    background: #3b95f5;
+  .meta-time {
+    font-weight: 500;
+    color: #111827;
+  }
+
+  .full-detail-btn {
+    width: 100%;
+    padding: 10px 18px;
+    border: none;
+    border-radius: 999px;
+    background: linear-gradient(90deg, #4b94f7 0%, #3b82f6 100%);
+    color: #ffffff;
+    font-family: inherit;
+    font-size: 13.5px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-shadow: 0 3px 8px rgba(59, 130, 246, 0.3);
+    transition: background 0.15s ease, transform 0.1s ease;
+  }
+
+  .full-detail-btn:hover {
+    background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%);
+  }
+
+  .full-detail-btn .arrow {
+    font-size: 16px;
+    line-height: 1;
+  }
+
+  /* Panel Kanan: Hasil Ujian Akhir */
+  .final-result-card {
+    background: #ffffff;
+    border: 1.5px solid #e4e7ec;
+    border-radius: 16px;
+    padding: 20px 20px 22px;
+    box-shadow: 4px 5px 0 #d5d9e0, 0 8px 18px rgba(0, 0, 0, 0.04);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    justify-content: space-between;
+  }
+
+  .final-result-card h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+    color: #0b2e59;
+  }
+
+  .illustration-box {
+    margin: 4px 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .result-logo-img {
+    width: 145px;
+    height: 105px;
+    object-fit: contain;
+  }
+
+  .final-result-card h4 {
+    margin: 0;
+    font-size: 15.5px;
+    font-weight: 700;
+    color: #0b2e59;
+  }
+
+  .result-desc {
+    margin: 4px 0 12px;
+    font-size: 11px;
+    line-height: 1.45;
+    color: #6b7280;
+  }
+
+  .result-pill-btn {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 9px 14px;
+    border-radius: 999px;
+    background-color: #dce8fc;
+    color: #0b2e59;
+    text-decoration: none;
+    font-size: 12px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: background-color 0.15s ease;
+  }
+
+  .result-pill-btn:hover {
+    background-color: #c9dcfa;
   }
 
   @media (max-width: 960px) {
@@ -773,12 +934,15 @@
     .summary-cards {
       grid-template-columns: 1fr;
     }
-    .session-row {
+    .bottom-grid {
       grid-template-columns: 1fr;
-      text-align: left;
     }
-    .session-status {
-      justify-content: flex-start;
+    .session-content {
+      flex-direction: column;
+      text-align: center;
+    }
+    .session-top-row {
+      flex-direction: column;
     }
   }
 </style>
