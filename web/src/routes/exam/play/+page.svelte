@@ -4,11 +4,12 @@
     examSessionInfo,
     examQuestions,
     getActiveSessionData,
-    getQuestionsBySession
+    getQuestionsBySession,
+    getUserStorageKey
   } from '../../../lib/data/examQuestions.js';
 
   let sidebarLogoUrl = '/logo-sidebar.png';
-  let listeningBoxLogoUrl = '/logo-listening.png'; // Gambar kotak besar headset milikmu[cite: 7]
+  let listeningBoxLogoUrl = '/logo-listening.png';
 
   let sidebarLogoError = $state(false);
   let listeningBoxLogoError = $state(false);
@@ -18,10 +19,9 @@
 
   let currentQuestionIndex = $state(0);
   let selectedAnswers = $state({});
-  let remainingSeconds = $state(3569); // 00:59:29[cite: 7, 8]
+  let remainingSeconds = $state(3569);
   let timerInterval = null;
 
-  // State Pop-up Konfirmasi Selesai Ujian
   let showFinishConfirmModal = $state(false);
 
   let audioElement = $state(null);
@@ -55,7 +55,9 @@
       remainingSeconds = sessionData.durationMinutes * 60;
     }
 
-    const savedAnswers = localStorage.getItem(`toefl_exam_answers_${sessionData.id}`);
+    const savedAnswers = localStorage.getItem(
+      getUserStorageKey(`toefl_exam_answers_${sessionData.id}`)
+    );
     if (savedAnswers) {
       try {
         selectedAnswers = JSON.parse(savedAnswers);
@@ -68,7 +70,6 @@
       if (remainingSeconds > 0) {
         remainingSeconds -= 1;
       } else {
-        // Jika waktu habis, langsung kumpulkan dan tampilkan nilai
         confirmAndSubmitExam();
       }
     }, 1000);
@@ -126,10 +127,9 @@
       [currentQuestion.id]: optionLabel
     };
     localStorage.setItem(
-      `toefl_exam_answers_${activeSession.id}`,
+      getUserStorageKey(`toefl_exam_answers_${activeSession.id}`),
       JSON.stringify(selectedAnswers)
     );
-    localStorage.setItem('toefl_exam_answers', JSON.stringify(selectedAnswers));
   }
 
   function prevQuestion() {
@@ -144,7 +144,6 @@
       currentQuestionIndex += 1;
       resetAudioState();
     } else {
-      // Di soal terakhir, tampilkan pop-up konfirmasi apakah yakin sudah selesai
       showFinishConfirmModal = true;
     }
   }
@@ -155,8 +154,7 @@
   }
 
   function exitExamRoom() {
-    localStorage.setItem(`toefl_exam_status_${activeSession.id}`, 'ongoing');
-    localStorage.setItem('toefl_exam_status', 'ongoing');
+    localStorage.setItem(getUserStorageKey(`toefl_exam_status_${activeSession.id}`), 'ongoing');
     window.history.pushState({}, '', '/exam');
     window.dispatchEvent(new PopStateEvent('popstate'));
   }
@@ -166,23 +164,20 @@
     if (timerInterval) clearInterval(timerInterval);
     resetAudioState();
 
-    // Kunci status sesi menjadi 'finished' (Merah / Sudah Selesai)
-    localStorage.setItem(`toefl_exam_status_${activeSession.id}`, 'finished');
-    localStorage.setItem('toefl_exam_status', 'finished');
+    localStorage.setItem(getUserStorageKey(`toefl_exam_status_${activeSession.id}`), 'finished');
 
-    // Tandai juga di daftar jadwal tes bahwa sesi ini sudah Selesai
     try {
-      const savedSessions = localStorage.getItem('toefl_sessions_list');
+      const userListKey = getUserStorageKey('toefl_sessions_list');
+      const savedSessions = localStorage.getItem(userListKey);
       if (savedSessions) {
         const parsedList = JSON.parse(savedSessions);
         const updatedList = parsedList.map((s) =>
           s.id === activeSession.id ? { ...s, status: 'Selesai', category: 'Selesai' } : s
         );
-        localStorage.setItem('toefl_sessions_list', JSON.stringify(updatedList));
+        localStorage.setItem(userListKey, JSON.stringify(updatedList));
       }
     } catch (e) {}
 
-    // Langsung arahkan ke halaman Hasil Nilai (/results)
     window.history.pushState({}, '', '/results');
     window.dispatchEvent(new PopStateEvent('popstate'));
   }

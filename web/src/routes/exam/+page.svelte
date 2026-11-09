@@ -1,6 +1,10 @@
 <script>
   import { onMount } from 'svelte';
-  import { examSessionInfo } from '../../lib/data/examQuestions.js';
+  import {
+    examSessionInfo,
+    getActiveSessionData,
+    getUserStorageKey
+  } from '../../lib/data/examQuestions.js';
 
   let sidebarLogoUrl = '/logo-sidebar.png';
   let bannerLogoUrl = '/logo-banner.png';
@@ -12,49 +16,29 @@
 
   let activeMenu = $state('ujian');
 
-  let currentSession = $state({
-    id: examSessionInfo.id,
-    title: examSessionInfo.title,
-    subtitle: examSessionInfo.subtitle,
-    registrationStatus: examSessionInfo.registrationStatus,
-    date: examSessionInfo.date,
-    time: examSessionInfo.time,
-    durationText: examSessionInfo.durationText,
-    totalQuestions: examSessionInfo.totalQuestions
-  });
-
-  // 'not_started' (Biru) | 'ongoing' (Hijau) | 'finished' (Merah)
+  let currentSession = $state({ ...examSessionInfo });
   let examState = $state('not_started');
 
   onMount(() => {
-    const savedActive = localStorage.getItem('toefl_active_session');
-    if (savedActive) {
-      try {
-        const parsed = JSON.parse(savedActive);
-        currentSession = {
-          ...currentSession,
-          id: parsed.id || 1,
-          title: parsed.title ? parsed.title.replace('-', ' - ') : currentSession.title,
-          date: parsed.date || currentSession.date,
-          time: parsed.time || currentSession.time,
-          registrationStatus: parsed.status || 'Terdaftar'
-        };
-      } catch (e) {
-        console.error(e);
-      }
-    }
+    const activeData = getActiveSessionData();
+    currentSession = activeData;
 
-    const statusBySession = localStorage.getItem(`toefl_exam_status_${currentSession.id}`);
-    if (statusBySession === 'ongoing' || statusBySession === 'finished' || statusBySession === 'not_started') {
-      examState = statusBySession;
+    const statusByUserSession = localStorage.getItem(
+      getUserStorageKey(`toefl_exam_status_${activeData.id}`)
+    );
+    if (
+      statusByUserSession === 'ongoing' ||
+      statusByUserSession === 'finished' ||
+      statusByUserSession === 'not_started'
+    ) {
+      examState = statusByUserSession;
     } else {
       examState = 'not_started';
     }
   });
 
   function goToExamPlay() {
-    localStorage.setItem(`toefl_exam_status_${currentSession.id}`, 'ongoing');
-    localStorage.setItem('toefl_exam_status', 'ongoing');
+    localStorage.setItem(getUserStorageKey(`toefl_exam_status_${currentSession.id}`), 'ongoing');
     window.history.pushState({}, '', '/exam/play');
     window.dispatchEvent(new PopStateEvent('popstate'));
   }

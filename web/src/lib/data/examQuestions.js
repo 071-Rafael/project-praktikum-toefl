@@ -1,4 +1,4 @@
-// Data sesi ujian default (nantinya otomatis mengikuti sesi yang dipilih dari Jadwal Tes atau buatan Admin)
+// Data sesi ujian default
 export const examSessionInfo = {
   id: 1,
   title: 'TOEFL - Sesi 1',
@@ -16,7 +16,7 @@ export const examQuestions = [
   {
     id: 101,
     number: 1,
-    type: 'listening', // 'listening' | 'structure' | 'reading'
+    type: 'listening',
     sectionTitle: 'Listening Compresion , section 1 dari 3',
     audioUrl: '/audio/listening-1.mp3',
     audioDuration: '00:00 / 1:50',
@@ -81,10 +81,33 @@ export const examQuestions = [
   }
 ];
 
-// Mengambil sesi aktif yang diklik user atau dibuat oleh Admin (dengan fallback aman jika sesi dihapus)
+// Mengambil identitas unik akun yang sedang login agar data antar akun tidak tercampur
+export function getCurrentUserKey() {
+  try {
+    const savedUser = localStorage.getItem('user');
+    if (savedUser) {
+      const parsed = JSON.parse(savedUser);
+      const identifier = parsed.id || parsed.email || parsed.username || parsed.name;
+      if (identifier) {
+        return String(identifier).trim().toLowerCase().replace(/\s+/g, '_');
+      }
+    }
+  } catch (err) {
+    console.error('Gagal membaca identitas user:', err);
+  }
+  return 'guest';
+}
+
+// Helper membuat key localStorage spesifik per akun user
+export function getUserStorageKey(baseKey) {
+  const userKey = getCurrentUserKey();
+  return `${baseKey}_user_${userKey}`;
+}
+
+// Mengambil sesi aktif milik akun yang sedang login
 export function getActiveSessionData() {
   try {
-    const saved = localStorage.getItem('toefl_active_session');
+    const saved = localStorage.getItem(getUserStorageKey('toefl_active_session'));
     if (saved) {
       const parsed = JSON.parse(saved);
       return {
@@ -105,7 +128,7 @@ export function getActiveSessionData() {
   return examSessionInfo;
 }
 
-// Mengambil daftar soal sesuai ID sesi (mendukung penambahan/pengeditan soal per sesi oleh Admin)
+// Mengambil daftar soal sesuai ID sesi
 export function getQuestionsBySession(sessionId) {
   try {
     const customQuestions = localStorage.getItem(`toefl_questions_session_${sessionId}`);

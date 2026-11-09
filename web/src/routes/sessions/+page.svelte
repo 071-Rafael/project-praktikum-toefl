@@ -1,24 +1,25 @@
 <script>
   import { onMount } from 'svelte';
+  import { getUserStorageKey } from '../../lib/data/examQuestions.js';
 
-  let sidebarLogoUrl = '/logo-sidebar.png'; // Logo 1: Di atas Sidebar kiri
-  let bannerLogoUrl = '/logo-banner.png';   // Logo 2: Di kanan Banner Jadwal Tes
+  let sidebarLogoUrl = '/logo-sidebar.png';
+  let bannerLogoUrl = '/logo-banner.png';
   let sidebarLogoError = $state(false);
   let bannerLogoError = $state(false);
   let activeMenu = $state('jadwal');
   let searchQuery = $state('');
-  let selectedFilter = $state('Semua'); // 'Semua' | 'Tersedia' | 'Selesai'
+  let selectedFilter = $state('Semua');
   let currentPage = $state(1);
 
-  // Data sesi ujian sesuai desain (Halaman 1 menampilkan Sesi 1 - 3, Halaman 2 menampilkan Sesi 4 - 8)
-  let sessions = $state([
+  // Daftar sesi awal untuk setiap akun baru
+  const defaultSessions = [
     {
       id: 1,
       title: 'TOEFL-Sesi 1',
       date: '12 Mei 2026',
       time: '12.00 - 13.00 WIB',
       location: 'Online / Ruang Utama',
-      status: 'Terdaftar',
+      status: 'Tersedia',
       category: 'Tersedia'
     },
     {
@@ -84,16 +85,22 @@
       status: 'Tersedia',
       category: 'Tersedia'
     }
-  ]);
+  ];
+
+  let sessions = $state([...defaultSessions]);
 
   onMount(() => {
-    const savedSessions = localStorage.getItem('toefl_sessions_list');
+    // Membaca daftar sesi khusus milik akun yang sedang login
+    const userSessionsKey = getUserStorageKey('toefl_sessions_list');
+    const savedSessions = localStorage.getItem(userSessionsKey);
     if (savedSessions) {
       try {
         sessions = JSON.parse(savedSessions);
       } catch (e) {
-        console.error('Gagal memuat daftar sesi:', e);
+        sessions = [...defaultSessions];
       }
+    } else {
+      sessions = [...defaultSessions];
     }
   });
 
@@ -132,14 +139,24 @@
     sessions = sessions.map((s) =>
       s.id === sessionId ? { ...s, status: 'Terdaftar' } : s
     );
-    localStorage.setItem('toefl_sessions_list', JSON.stringify(sessions));
-    // Setel sesi yang baru didaftarkan menjadi 'not_started' (Belum Dimulai)
-    localStorage.setItem(`toefl_exam_status_${sessionId}`, 'not_started');
+    // Simpan ke localStorage spesifik untuk akun yang sedang login
+    localStorage.setItem(getUserStorageKey('toefl_sessions_list'), JSON.stringify(sessions));
+    localStorage.setItem(getUserStorageKey(`toefl_exam_status_${sessionId}`), 'not_started');
+
+    const registeredItem = sessions.find((s) => s.id === sessionId);
+    if (registeredItem) {
+      localStorage.setItem(
+        getUserStorageKey('toefl_active_session'),
+        JSON.stringify(registeredItem)
+      );
+    }
   }
 
   function handleViewDetail(sessionItem) {
-    // Simpan sesi yang diklik agar halaman Mulai Ujian (/exam) menampilkan sesi ini
-    localStorage.setItem('toefl_active_session', JSON.stringify(sessionItem));
+    localStorage.setItem(
+      getUserStorageKey('toefl_active_session'),
+      JSON.stringify(sessionItem)
+    );
     window.history.pushState({}, '', '/exam');
     window.dispatchEvent(new PopStateEvent('popstate'));
   }
@@ -159,7 +176,6 @@
   <div class="dashboard-shell">
     <!-- ==================== SIDEBAR KIRI ==================== -->
     <aside class="sidebar">
-      <!-- TEMPAT LOGO 1: Di Atas Sidebar -->
       <div class="brand-box">
         {#if !sidebarLogoError}
           <img
@@ -187,7 +203,6 @@
         {/if}
       </div>
 
-      <!-- Menu Navigasi Sidebar -->
       <nav class="nav-list">
         <a
           href="/dashboard"
@@ -529,7 +544,6 @@
     overflow: hidden;
     position: relative;
   }
-  /* ==================== SIDEBAR ==================== */
   .sidebar {
     position: relative;
     border-right: 1.5px solid #e5e9f2;
@@ -645,7 +659,6 @@
     background: #d8f1ff;
     border-radius: 50%;
   }
-  /* ==================== MAIN CONTENT KANAN ==================== */
   .main-area {
     padding: 30px 38px 36px;
     display: flex;
@@ -653,7 +666,6 @@
     gap: 20px;
     background: #ffffff;
   }
-  /* 1. Banner Jadwal Tes */
   .welcome-banner {
     background: linear-gradient(180deg, #dcf0ff 0%, #cbe6ff 100%);
     border: 1.5px solid #c2dfff;
@@ -692,7 +704,6 @@
     width: 74px;
     height: 74px;
   }
-  /* 2. Bar Pencarian & Filter Pills */
   .filter-bar {
     display: flex;
     align-items: center;
@@ -755,7 +766,6 @@
     color: #ffffff;
     box-shadow: 0 3px 0 #466291;
   }
-  /* 3. Panel Jadwal Tes Mendatang */
   .schedule-outer-card {
     background: #ffffff;
     border: 1.5px solid #e2e6ee;
@@ -892,7 +902,6 @@
   .action-btn.primary:hover {
     background: #4f93fa;
   }
-  /* Footer & Pagination */
   .schedule-footer {
     display: flex;
     align-items: center;
