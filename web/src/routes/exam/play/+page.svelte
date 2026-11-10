@@ -178,6 +178,25 @@
       }
     } catch (e) {}
 
+    const newResultItem = {
+      id: activeSession.id,
+      title: activeSession.title,
+      date: activeSession.date,
+      time: activeSession.time,
+      totalScore: 560,
+      status: 'Lulus',
+      listeningScore: '60/68',
+      structureScore: '58/68',
+      readingScore: '60/68',
+      validUntil: '11 Juni 2026'
+    };
+
+    localStorage.setItem(getUserStorageKey('toefl_results_view_mode'), 'detail');
+    localStorage.setItem(
+      getUserStorageKey('toefl_selected_result_item'),
+      JSON.stringify(newResultItem)
+    );
+    
     window.history.pushState({}, '', '/results');
     window.dispatchEvent(new PopStateEvent('popstate'));
   }

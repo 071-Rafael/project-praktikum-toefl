@@ -5,6 +5,7 @@
   import SessionsPage from './routes/sessions/+page.svelte';
   import ExamPage from './routes/exam/+page.svelte';
   import ExamPlayPage from './routes/exam/play/+page.svelte';
+  import ResultsPage from './routes/results/+page.svelte';
 
   let currentPath = $state(window.location.pathname);
 
@@ -38,6 +39,8 @@
   <ExamPage />
 {:else if currentPath === '/exam/play'}
   <ExamPlayPage />
+{:else if currentPath === '/results'}
+  <ResultsPage />
 {:else}
   <LoginPage />
 {/if}
