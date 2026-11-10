@@ -5,7 +5,8 @@
     examQuestions,
     getActiveSessionData,
     getQuestionsBySession,
-    getUserStorageKey
+    getUserStorageKey,
+    calculateToeflScore
   } from '../../../lib/data/examQuestions.js';
 
   let sidebarLogoUrl = '/logo-sidebar.png';
@@ -39,8 +40,7 @@
   });
 
   let progressPercent = $derived.by(() => {
-    const total = activeSession.totalQuestions || questionList.length || 1;
-    if (currentQuestionIndex === 0) return 5;
+    const total = questionList.length || activeSession.totalQuestions || 1;
     return Math.min(100, Math.round(((currentQuestionIndex + 1) / total) * 100));
   });
 
@@ -164,8 +164,49 @@
     if (timerInterval) clearInterval(timerInterval);
     resetAudioState();
 
+    // 1. Kunci status sesi menjadi 'finished' (Merah / Sudah Selesai)
     localStorage.setItem(getUserStorageKey(`toefl_exam_status_${activeSession.id}`), 'finished');
 
+    // 2. Hitung nilai TOEFL asli berdasarkan jawaban benar & salah
+    const scoreData = calculateToeflScore(questionList, selectedAnswers);
+
+    const newResultItem = {
+      id: activeSession.id,
+      title: activeSession.title,
+      date: activeSession.date,
+      time: activeSession.time,
+      totalScore: scoreData.totalScore,
+      status: scoreData.status,
+      listeningScore: scoreData.listeningScore,
+      structureScore: scoreData.structureScore,
+      readingScore: scoreData.readingScore,
+      correctCount: scoreData.correctCount,
+      totalQuestions: scoreData.totalQuestions,
+      validUntil: '11 Juni 2026'
+    };
+
+    // 3. Simpan hasil nilai spesifik untuk sesi ini dan perbarui daftar Riwayat Ujian user
+    localStorage.setItem(
+      getUserStorageKey(`toefl_result_data_${activeSession.id}`),
+      JSON.stringify(newResultItem)
+    );
+
+    try {
+      const historyKey = getUserStorageKey('toefl_exam_results_history');
+      const existingRaw = localStorage.getItem(historyKey);
+      let historyArr = existingRaw ? JSON.parse(existingRaw) : [];
+      if (!Array.isArray(historyArr)) historyArr = [];
+
+      // Hapus entri lama dengan ID sesi yang sama (jika ada) lalu masukkan yang terbaru di urutan paling atas
+      historyArr = historyArr.filter((item) => item.id !== activeSession.id);
+      historyArr.unshift(newResultItem);
+
+      localStorage.setItem(historyKey, JSON.stringify(historyArr));
+    } catch (err) {
+      console.error('Gagal menyimpan riwayat hasil:', err);
+    }
+
+    // 4. Ubah status sesi di Jadwal Tes menjadi 'Selesai' untuk akun ini
     try {
       const userListKey = getUserStorageKey('toefl_sessions_list');
       const savedSessions = localStorage.getItem(userListKey);
@@ -178,25 +219,13 @@
       }
     } catch (e) {}
 
-    const newResultItem = {
-      id: activeSession.id,
-      title: activeSession.title,
-      date: activeSession.date,
-      time: activeSession.time,
-      totalScore: 560,
-      status: 'Lulus',
-      listeningScore: '60/68',
-      structureScore: '58/68',
-      readingScore: '60/68',
-      validUntil: '11 Juni 2026'
-    };
-
+    // 5. Buka halaman /results langsung dalam mode Detail Nilai
     localStorage.setItem(getUserStorageKey('toefl_results_view_mode'), 'detail');
     localStorage.setItem(
       getUserStorageKey('toefl_selected_result_item'),
       JSON.stringify(newResultItem)
     );
-    
+
     window.history.pushState({}, '', '/results');
     window.dispatchEvent(new PopStateEvent('popstate'));
   }
@@ -329,7 +358,6 @@
           </button>
         </section>
       {:else}
-        <!-- 1. Top Banner Ujian Aktif -->
         <section class="active-exam-header">
           <div class="exam-header-left">
             <div class="section-icon-box">
@@ -379,19 +407,16 @@
           </div>
         </section>
 
-        <!-- 2. Progress Bar -->
         <section class="progress-section">
-          <span class="progress-label">Soal {currentQuestion.number} dari {activeSession.totalQuestions}</span>
+          <span class="progress-label">Soal {currentQuestion.number} dari {questionList.length}</span>
           <div class="progress-track">
             <div class="progress-fill" style="width: {progressPercent}%"></div>
           </div>
           <span class="progress-pct">{progressPercent}%</span>
         </section>
 
-        <!-- 3. Kartu Konten Soal (2 Kolom) -->
         <section class="question-workspace-card">
           <div class="question-split-grid">
-            <!-- KOLOM KIRI -->
             <div class="left-stimulus-pane">
               {#if currentQuestion.type === 'listening'}
                 <audio
@@ -455,7 +480,6 @@
               {/if}
             </div>
 
-            <!-- KOLOM KANAN -->
             <div class="right-options-pane">
               {#if currentQuestion.questionText}
                 <h3 class="question-heading">{currentQuestion.questionText}</h3>
@@ -478,7 +502,6 @@
             </div>
           </div>
 
-          <!-- 4. Navigasi Bawah Soal -->
           <div class="exam-bottom-nav">
             <button
               type="button"
@@ -500,7 +523,6 @@
                   {q.number || idx + 1}
                 </button>
               {/each}
-              <span class="q-num-dots">...</span>
             </div>
 
             <button type="button" class="nav-pill-btn next" onclick={nextQuestion}>
@@ -512,7 +534,6 @@
     </main>
   </div>
 
-  <!-- ==================== POP-UP KONFIRMASI SELESAI UJIAN ==================== -->
   {#if showFinishConfirmModal}
     <div class="modal-backdrop">
       <div class="confirm-modal-box">
@@ -552,7 +573,6 @@
     background-color: #f3f7fc;
     color: #172033;
   }
-
   .dashboard-bg {
     min-height: 100vh;
     display: flex;
@@ -562,7 +582,6 @@
     box-sizing: border-box;
     background: linear-gradient(135deg, #e6f2ff 0%, #f3f8ff 100%);
   }
-
   .dashboard-shell {
     width: 100%;
     max-width: 1180px;
@@ -575,7 +594,6 @@
     overflow: hidden;
     position: relative;
   }
-
   .sidebar {
     position: relative;
     border-right: 1.5px solid #e5e9f2;
@@ -586,7 +604,6 @@
     z-index: 1;
     overflow: hidden;
   }
-
   .brand-box {
     display: flex;
     flex-direction: column;
@@ -595,24 +612,20 @@
     margin-bottom: 24px;
     min-height: 100px;
   }
-
   .sidebar-logo-img {
     max-width: 160px;
     max-height: 100px;
     object-fit: contain;
   }
-
   .brand-fallback {
     display: flex;
     flex-direction: column;
     align-items: center;
   }
-
   .logo-t-svg {
     width: 66px;
     height: 66px;
   }
-
   .brand-title {
     font-size: 18.5px;
     font-weight: 800;
@@ -622,7 +635,6 @@
     margin-top: 2px;
     line-height: 1.1;
   }
-
   .brand-sub {
     display: flex;
     align-items: center;
@@ -633,14 +645,12 @@
     color: #2f80ed;
     margin-top: 2px;
   }
-
   .brand-sub span {
     width: 16px;
     height: 1.5px;
     background: #56ccf2;
     display: inline-block;
   }
-
   .nav-list {
     display: flex;
     flex-direction: column;
@@ -648,7 +658,6 @@
     position: relative;
     z-index: 2;
   }
-
   .nav-item {
     display: flex;
     align-items: center;
@@ -661,19 +670,16 @@
     font-weight: 600;
     transition: all 0.2s ease;
   }
-
   .nav-item:hover {
     background: #f2f8ff;
     color: #172033;
   }
-
   .nav-item.active {
     background: linear-gradient(90deg, #b8dcff 0%, #a3d2ff 100%);
     color: #0b192c;
     font-weight: 700;
     box-shadow: 0 3px 6px rgba(86, 158, 255, 0.35);
   }
-
   .nav-icon {
     width: 24px;
     height: 24px;
@@ -682,7 +688,6 @@
     justify-content: center;
     flex-shrink: 0;
   }
-
   .sidebar-wave-decor {
     position: absolute;
     bottom: -55px;
@@ -694,7 +699,6 @@
     pointer-events: none;
     z-index: 0;
   }
-
   .sidebar-wave-decor::after {
     content: '';
     position: absolute;
@@ -705,7 +709,6 @@
     background: #d8f1ff;
     border-radius: 50%;
   }
-
   .main-area {
     padding: 28px 36px 32px;
     display: flex;
@@ -713,7 +716,6 @@
     gap: 20px;
     background: #ffffff;
   }
-
   .empty-session-box {
     flex: 1;
     display: flex;
@@ -727,7 +729,6 @@
     border-radius: 16px;
     padding: 40px;
   }
-
   .active-exam-header {
     background: linear-gradient(180deg, #dcf0ff 0%, #cbe6ff 100%);
     border: 1.5px solid #b8d8f8;
@@ -738,13 +739,11 @@
     justify-content: space-between;
     box-shadow: 0 5px 0 #b8cde3;
   }
-
   .exam-header-left {
     display: flex;
     align-items: center;
     gap: 20px;
   }
-
   .section-icon-box {
     width: 48px;
     height: 48px;
@@ -752,27 +751,23 @@
     align-items: center;
     justify-content: center;
   }
-
   .exam-header-titles h1 {
     margin: 0 0 2px;
     font-size: 23px;
     font-weight: 800;
     color: #0b2e59;
   }
-
   .exam-header-titles p {
     margin: 0;
     font-size: 11px;
     color: #7d93a8;
     font-weight: 500;
   }
-
   .exam-header-right {
     display: flex;
     align-items: center;
     gap: 22px;
   }
-
   .timer-pill-box {
     background: #f5f9ff;
     border: 1.2px solid #c2d9f5;
@@ -783,30 +778,25 @@
     gap: 10px;
     box-shadow: 0 3px 0 #b8cde3;
   }
-
   .timer-text-col {
     display: flex;
     flex-direction: column;
     line-height: 1.15;
   }
-
   .timer-text-col strong {
     font-size: 13.5px;
     font-weight: 800;
     color: #0b2e59;
   }
-
   .timer-text-col span {
     font-size: 9.5px;
     color: #6b7280;
   }
-
   .header-vert-line {
     width: 1.2px;
     height: 46px;
     background-color: #93b4d8;
   }
-
   .exit-exam-btn {
     background: #ffe4e8;
     border: 1.2px solid #fbcfe8;
@@ -823,18 +813,15 @@
     box-shadow: 0 3px 0 #e5b8c0;
     transition: transform 0.1s ease;
   }
-
   .exit-exam-btn:hover {
     background: #fecdd3;
   }
-
   .progress-section {
     display: flex;
     align-items: center;
     gap: 14px;
     padding: 0 4px;
   }
-
   .progress-label,
   .progress-pct {
     font-size: 11px;
@@ -842,7 +829,6 @@
     color: #374151;
     white-space: nowrap;
   }
-
   .progress-track {
     flex: 1;
     height: 9px;
@@ -850,14 +836,12 @@
     border-radius: 999px;
     overflow: hidden;
   }
-
   .progress-fill {
     height: 100%;
     background: linear-gradient(90deg, #4b94f7 0%, #3b82f6 100%);
     border-radius: 999px;
     transition: width 0.25s ease;
   }
-
   .question-workspace-card {
     background: #fbfcfe;
     border: 1.5px solid #e4e8f0;
@@ -869,7 +853,6 @@
     flex: 1;
     justify-content: space-between;
   }
-
   .question-split-grid {
     background: #ffffff;
     border: 1.2px solid #e1e5ee;
@@ -879,7 +862,6 @@
     min-height: 360px;
     overflow: hidden;
   }
-
   .left-stimulus-pane {
     border-right: 1.2px solid #e1e5ee;
     padding: 26px 28px;
@@ -889,7 +871,6 @@
     justify-content: center;
     gap: 24px;
   }
-
   .audio-player-pill {
     width: 100%;
     max-width: 340px;
@@ -901,7 +882,6 @@
     gap: 10px;
     box-sizing: border-box;
   }
-
   .play-circle-btn {
     width: 32px;
     height: 32px;
@@ -914,14 +894,12 @@
     cursor: pointer;
     flex-shrink: 0;
   }
-
   .audio-time {
     font-size: 10px;
     font-weight: 700;
     color: #1f2937;
     white-space: nowrap;
   }
-
   .audio-wave-track {
     flex: 1;
     height: 4px;
@@ -929,13 +907,11 @@
     border-radius: 999px;
     overflow: hidden;
   }
-
   .audio-wave-progress {
     height: 100%;
     background: #6688d9;
     border-radius: 999px;
   }
-
   .listening-visual-card {
     width: 100%;
     max-width: 340px;
@@ -948,19 +924,16 @@
     justify-content: center;
     background: #cce7ff;
   }
-
   .listening-custom-img {
     width: 100%;
     height: 100%;
     object-fit: cover;
   }
-
   .listening-fallback-svg {
     width: 100%;
     height: 100%;
     display: block;
   }
-
   .structure-prompt-card {
     width: 100%;
     max-width: 360px;
@@ -975,7 +948,6 @@
     justify-content: center;
     gap: 8px;
   }
-
   .structure-prompt-card p {
     margin: 0;
     font-size: 19px;
@@ -983,7 +955,6 @@
     color: #1f2937;
     line-height: 1.45;
   }
-
   .right-options-pane {
     padding: 28px 30px;
     display: flex;
@@ -991,20 +962,17 @@
     justify-content: center;
     gap: 18px;
   }
-
   .question-heading {
     margin: 0 0 4px;
     font-size: 15.5px;
     font-weight: 600;
     color: #1f2937;
   }
-
   .options-list {
     display: flex;
     flex-direction: column;
     gap: 12px;
   }
-
   .option-row-btn {
     width: 100%;
     background: #ffffff;
@@ -1020,18 +988,15 @@
     transition: all 0.15s ease;
     box-sizing: border-box;
   }
-
   .option-row-btn:hover {
     background: #f3f8ff;
     border-color: #4b94f7;
   }
-
   .option-row-btn.selected {
     background: #e8f2ff;
     border-color: #2563eb;
     box-shadow: 0 0 0 1px #2563eb;
   }
-
   .radio-circle {
     width: 22px;
     height: 22px;
@@ -1041,18 +1006,15 @@
     flex-shrink: 0;
     box-sizing: border-box;
   }
-
   .radio-circle.checked {
     border-color: #2563eb;
     background: radial-gradient(circle, #2563eb 45%, transparent 50%);
   }
-
   .option-text {
     font-size: 13px;
     font-weight: 500;
     color: #1f2937;
   }
-
   .exam-bottom-nav {
     display: flex;
     align-items: center;
@@ -1060,7 +1022,6 @@
     gap: 16px;
     padding-top: 2px;
   }
-
   .nav-pill-btn {
     min-width: 165px;
     padding: 9px 24px;
@@ -1071,19 +1032,16 @@
     cursor: pointer;
     transition: all 0.15s ease;
   }
-
   .nav-pill-btn.prev {
     background: #ffffff;
     border: 1.2px solid #7589a6;
     color: #1f2937;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
   }
-
   .nav-pill-btn.prev:disabled {
     opacity: 0.45;
     cursor: default;
   }
-
   .nav-pill-btn.next {
     background: linear-gradient(90deg, #5294f7 0%, #4687f2 100%);
     border: none;
@@ -1091,13 +1049,11 @@
     font-weight: 700;
     box-shadow: 0 3px 8px rgba(70, 135, 242, 0.35);
   }
-
   .question-quick-numbers {
     display: flex;
     align-items: center;
     gap: 10px;
   }
-
   .q-num-btn {
     width: 30px;
     height: 30px;
@@ -1113,29 +1069,12 @@
     align-items: center;
     justify-content: center;
   }
-
   .q-num-btn.active {
     background: #4da1ff;
     border-color: #3b82f6;
     color: #0b2545;
     font-weight: 700;
   }
-
-  .q-num-dots {
-    width: 30px;
-    height: 30px;
-    border-radius: 8px;
-    border: 1px solid #c5cedb;
-    background: #ffffff;
-    color: #1f2937;
-    font-size: 13px;
-    font-weight: 700;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  /* ==================== STYLE MODAL KONFIRMASI SELESAI ==================== */
   .modal-backdrop {
     position: fixed;
     inset: 0;
@@ -1147,7 +1086,6 @@
     z-index: 999;
     padding: 20px;
   }
-
   .confirm-modal-box {
     width: 100%;
     max-width: 430px;
@@ -1162,7 +1100,6 @@
     align-items: center;
     gap: 12px;
   }
-
   .modal-warn-icon {
     width: 52px;
     height: 52px;
@@ -1176,25 +1113,21 @@
     align-items: center;
     justify-content: center;
   }
-
   .confirm-modal-box h3 {
     margin: 2px 0 0;
     font-size: 19px;
     font-weight: 700;
     color: #0b2e59;
   }
-
   .confirm-modal-box p {
     margin: 0;
     font-size: 13px;
     line-height: 1.55;
     color: #4b5563;
   }
-
   .confirm-modal-box p strong {
     color: #dc2626;
   }
-
   .modal-action-row {
     display: flex;
     align-items: center;
@@ -1202,7 +1135,6 @@
     width: 100%;
     margin-top: 10px;
   }
-
   .modal-btn {
     flex: 1;
     padding: 10px 14px;
@@ -1213,49 +1145,21 @@
     cursor: pointer;
     transition: all 0.15s ease;
   }
-
   .modal-btn.cancel {
     background: #ffffff;
     border: 1.5px solid #cbd5e1;
     color: #334155;
   }
-
   .modal-btn.cancel:hover {
     background: #f1f5f9;
   }
-
   .modal-btn.confirm {
     background: linear-gradient(90deg, #5294f7 0%, #3b82f6 100%);
     border: none;
     color: #ffffff;
     box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3);
   }
-
   .modal-btn.confirm:hover {
     background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%);
-  }
-
-  @media (max-width: 960px) {
-    .dashboard-shell {
-      grid-template-columns: 1fr;
-    }
-    .question-split-grid {
-      grid-template-columns: 1fr;
-    }
-    .left-stimulus-pane {
-      border-right: none;
-      border-bottom: 1.2px solid #e1e5ee;
-    }
-    .active-exam-header {
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 14px;
-    }
-    .exam-bottom-nav {
-      flex-direction: column;
-    }
-    .modal-action-row {
-      flex-direction: column;
-    }
   }
 </style>

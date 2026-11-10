@@ -8,15 +8,16 @@ export const examSessionInfo = {
   time: '12.00 - 13.00 WIB',
   durationMinutes: 60,
   durationText: '60 Menit',
-  totalQuestions: 50
+  totalQuestions: 4
 };
 
-// Daftar Soal & Audio Default (Taruh file MP3 kamu di dalam folder: web/public/audio/)
+// Daftar Soal, Audio & Kunci Jawaban (correctAnswer)
+// Taruh file MP3 kamu di dalam folder: web/public/audio/
 export const examQuestions = [
   {
     id: 101,
     number: 1,
-    type: 'listening',
+    type: 'listening', // 'listening' | 'structure' | 'reading'
     sectionTitle: 'Listening Compresion , section 1 dari 3',
     audioUrl: '/audio/listening-1.mp3',
     audioDuration: '00:00 / 1:50',
@@ -26,7 +27,8 @@ export const examQuestions = [
       { label: 'B', text: 'It is too expensive.' },
       { label: 'C', text: 'It is likely to be canceled.' },
       { label: 'D', text: 'It will be held outdors.' }
-    ]
+    ],
+    correctAnswer: 'C'
   },
   {
     id: 102,
@@ -41,7 +43,8 @@ export const examQuestions = [
       { label: 'B', text: 'At a campus bookstore.' },
       { label: 'C', text: 'In the biology laboratory.' },
       { label: 'D', text: 'At the student registration office.' }
-    ]
+    ],
+    correctAnswer: 'A'
   },
   {
     id: 103,
@@ -59,7 +62,8 @@ export const examQuestions = [
       { label: 'B', text: 'Prepares.' },
       { label: 'C', text: 'Prepared.' },
       { label: 'D', text: 'Preparing.' }
-    ]
+    ],
+    correctAnswer: 'C'
   },
   {
     id: 104,
@@ -77,7 +81,8 @@ export const examQuestions = [
       { label: 'B', text: 'Are.' },
       { label: 'C', text: 'Was.' },
       { label: 'D', text: 'Were.' }
-    ]
+    ],
+    correctAnswer: 'B'
   }
 ];
 
@@ -110,6 +115,7 @@ export function getActiveSessionData() {
     const saved = localStorage.getItem(getUserStorageKey('toefl_active_session'));
     if (saved) {
       const parsed = JSON.parse(saved);
+      const questionsForSession = getQuestionsBySession(parsed.id ?? examSessionInfo.id);
       return {
         id: parsed.id ?? examSessionInfo.id,
         title: parsed.title ? parsed.title.replace('-', ' - ') : examSessionInfo.title,
@@ -119,7 +125,7 @@ export function getActiveSessionData() {
         time: parsed.time || examSessionInfo.time,
         durationMinutes: Number(parsed.durationMinutes) || examSessionInfo.durationMinutes,
         durationText: parsed.durationText || `${Number(parsed.durationMinutes) || 60} Menit`,
-        totalQuestions: Number(parsed.totalQuestions) || examSessionInfo.totalQuestions
+        totalQuestions: Number(parsed.totalQuestions) || questionsForSession.length || examSessionInfo.totalQuestions
       };
     }
   } catch (err) {
@@ -142,4 +148,62 @@ export function getQuestionsBySession(sessionId) {
     console.error('Gagal memuat soal sesi:', err);
   }
   return examQuestions;
+}
+
+// Menghitung skor TOEFL nyata berdasarkan jawaban benar/salah user
+export function calculateToeflScore(questionList, selectedAnswers = {}) {
+  const sections = {
+    listening: { correct: 0, total: 0 },
+    structure: { correct: 0, total: 0 },
+    reading: { correct: 0, total: 0 }
+  };
+
+  let totalCorrectAll = 0;
+  const totalQuestionsAll = questionList.length || 1;
+
+  for (const q of questionList) {
+    const secType =
+      q.type === 'listening'
+        ? 'listening'
+        : q.type === 'structure'
+          ? 'structure'
+          : 'reading';
+
+    sections[secType].total += 1;
+
+    const userAns = selectedAnswers[q.id];
+    if (userAns && userAns === q.correctAnswer) {
+      sections[secType].correct += 1;
+      totalCorrectAll += 1;
+    }
+  }
+
+  const overallRatio = totalCorrectAll / totalQuestionsAll;
+
+  // Konversi rasio benar (0.0 - 1.0) ke skala nilai section TOEFL (31 - 68)
+  function calcSectionScaled(secObj) {
+    const ratio = secObj.total > 0 ? secObj.correct / secObj.total : overallRatio;
+    return Math.round(31 + ratio * 37);
+  }
+
+  const listeningScaled = calcSectionScaled(sections.listening);
+  const structureScaled = calcSectionScaled(sections.structure);
+  const readingScaled = calcSectionScaled(sections.reading);
+
+  // Rumus Skor Total TOEFL ITP: ((Listening + Structure + Reading) * 10) / 3
+  const rawTotalScore = Math.round(((listeningScaled + structureScaled + readingScaled) * 10) / 3);
+  const totalScore = Math.max(310, Math.min(677, rawTotalScore));
+
+  // Standar kelulusan: >= 450 Lulus, di bawah itu Belum Lulus
+  const status = totalScore >= 450 ? 'Lulus' : 'Belum Lulus';
+
+  return {
+    totalScore,
+    status,
+    listeningScore: `${listeningScaled}/68`,
+    structureScore: `${structureScaled}/68`,
+    readingScore: `${readingScaled}/68`,
+    correctCount: totalCorrectAll,
+    totalQuestions: totalQuestionsAll
+  };
 }
