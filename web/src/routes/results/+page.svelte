@@ -181,17 +181,6 @@
         <a href="/dashboard" class="nav-item">
           <span class="nav-icon">
             <svg viewBox="0 0 24 24" width="20" height="20" fill="#111">
-              <rect x="4" y="2" width="16" height="20" rx="2.5" />
-              <circle cx="12" cy="10" r="2.3" fill="#fff" />
-              <path d="M10.5 13.5L9.5 18l2.5-1.5L14.5 18l-1-4.5" fill="#fff" />
-            </svg>
-          </span>
-          <span class="nav-label">Sertifikat</span>
-        </a>
-
-        <a href="/dashboard" class="nav-item">
-          <span class="nav-icon">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="#111">
               <circle cx="12" cy="7.5" r="4" />
               <path d="M4.5 20c0-3.8 3.4-6.5 7.5-6.5s7.5 2.7 7.5 6.5" />
             </svg>

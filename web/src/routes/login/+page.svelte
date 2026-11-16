@@ -1,6 +1,7 @@
 <script>
   let identifier = $state('');
   let password = $state('');
+  let showPassword = $state(false); // State untuk menampilkan/menyembunyikan password
   let message = $state('');
   let loading = $state(false);
   let success = $state(false);
@@ -112,6 +113,7 @@
               <circle cx="12" cy="7" r="4"></circle>
             </svg>
           </span>
+
           <input
             id="identifier"
             name="identifier"
@@ -133,15 +135,38 @@
               <path d="M17 9h-1V7a4 4 0 0 0-8 0v2H7a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2zm-5 7a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm2.1-7H9.9V7a2.1 2.1 0 0 1 4.2 0v2z" />
             </svg>
           </span>
+
           <input
             id="password"
             name="password"
-            type="password"
+            type={showPassword ? 'text' : 'password'}
             placeholder="Masukkan Password"
             bind:value={password}
             autocomplete="current-password"
             required
           />
+
+          <!-- Tombol Toggle Mata untuk Melihat/Menyembunyikan Password -->
+          <button
+            type="button"
+            class="toggle-password-btn"
+            onclick={() => (showPassword = !showPassword)}
+            aria-label="Tampilkan atau sembunyikan password"
+          >
+            {#if showPassword}
+              <!-- Icon Mata Terbuka -->
+              <svg viewBox="0 0 24 24" width="20" height="20" stroke="#8c8c8c" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                <circle cx="12" cy="12" r="3"></circle>
+              </svg>
+            {:else}
+              <!-- Icon Mata Tertutup / Dicoret -->
+              <svg viewBox="0 0 24 24" width="20" height="20" stroke="#8c8c8c" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                <line x1="1" y1="1" x2="23" y2="23"></line>
+              </svg>
+            {/if}
+          </button>
         </div>
       </div>
 
@@ -283,7 +308,27 @@
     font-weight: 400;
   }
 
-  button {
+  /* Style untuk tombol toggle mata password */
+  .toggle-password-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    margin-left: 10px;
+    box-shadow: none;
+    width: auto;
+    transition: opacity 0.2s ease;
+  }
+
+  .toggle-password-btn:hover {
+    background-color: transparent;
+    opacity: 0.7;
+  }
+
+  button[type="submit"] {
     width: 100%;
     margin-top: 14px;
     padding: 12px;
@@ -299,15 +344,15 @@
     transition: background-color 0.2s ease, transform 0.1s ease;
   }
 
-  button:hover:not(:disabled) {
+  button[type="submit"]:hover:not(:disabled) {
     background-color: #0f8ad9;
   }
 
-  button:active:not(:disabled) {
+  button[type="submit"]:active:not(:disabled) {
     transform: translateY(1px);
   }
 
-  button:disabled {
+  button[type="submit"]:disabled {
     opacity: 0.65;
     cursor: wait;
   }

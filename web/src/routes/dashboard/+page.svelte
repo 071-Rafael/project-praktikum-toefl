@@ -152,22 +152,6 @@
         <a
           href="/dashboard"
           class="nav-item"
-          class:active={activeMenu === 'sertifikat'}
-          onclick={() => (activeMenu = 'sertifikat')}
-        >
-          <span class="nav-icon">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="#111">
-              <rect x="4" y="2" width="16" height="20" rx="2.5" />
-              <circle cx="12" cy="10" r="2.3" fill="#fff" />
-              <path d="M10.5 13.5L9.5 18l2.5-1.5L14.5 18l-1-4.5" fill="#fff" />
-            </svg>
-          </span>
-          <span class="nav-label">Sertifikat</span>
-        </a>
-
-        <a
-          href="/dashboard"
-          class="nav-item"
           class:active={activeMenu === 'profile'}
           onclick={() => (activeMenu = 'profile')}
         >
