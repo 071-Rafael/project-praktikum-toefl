@@ -1,5 +1,7 @@
 <script>
   import { onMount } from 'svelte';
+  import { getUserStorageKey } from '../../lib/data/examQuestions.js';
+
   let sidebarLogoUrl = '/logo-sidebar.png'; // Logo 1: Di atas Sidebar kiri
   let bannerLogoUrl = '/logo-banner.png';   // Logo 2: Di kanan Banner Selamat Datang
   let cardLogoUrl = '/logo-card.png';       // Logo 3: Logo T silver/ungu di Ujian Terdekat
@@ -10,18 +12,90 @@
   let cardLogoError = $state(false);
   let resultLogoError = $state(false);
 
-  // Nama default, otomatis berubah mengikuti user yang login di localStorage
   let userName = $state('Anonymous');
   let activeMenu = $state('dashboard');
 
-  const nearestExam = {
-    title: 'TOEFL-Sesi 1',
-    date: '12 Mei 2026',
-    time: '12.00 - 13.00 WIB',
-    status: 'Terdaftar'
-  };
+  // Daftar sesi awal jika akun baru belum pernah membuka halaman Jadwal Tes
+  const defaultSessions = [
+    {
+      id: 1,
+      title: 'TOEFL-Sesi 1',
+      date: '12 Mei 2026',
+      time: '12.00 - 13.00 WIB',
+      location: 'Online / Ruang Utama',
+      status: 'Tersedia',
+      category: 'Tersedia'
+    },
+    {
+      id: 2,
+      title: 'TOEFL-Sesi 2',
+      date: '21 Mei 2026',
+      time: '13.00 - 15.00 WIB',
+      location: 'Lab Bahasa 1',
+      status: 'Tersedia',
+      category: 'Tersedia'
+    },
+    {
+      id: 3,
+      title: 'TOEFL-Sesi 3',
+      date: '13 Juni 2026',
+      time: '08.00 - 10.00 WIB',
+      location: 'Lab Bahasa 2',
+      status: 'Tersedia',
+      category: 'Tersedia'
+    },
+    {
+      id: 4,
+      title: 'TOEFL-Sesi 4',
+      date: '20 Juni 2026',
+      time: '09.00 - 11.00 WIB',
+      location: 'Lab Bahasa 1',
+      status: 'Tersedia',
+      category: 'Tersedia'
+    },
+    {
+      id: 5,
+      title: 'TOEFL-Sesi 5',
+      date: '27 Juni 2026',
+      time: '13.00 - 15.00 WIB',
+      location: 'Online Zoom',
+      status: 'Tersedia',
+      category: 'Tersedia'
+    },
+    {
+      id: 6,
+      title: 'TOEFL-Sesi 6',
+      date: '04 Juli 2026',
+      time: '08.00 - 10.00 WIB',
+      location: 'Aula Kampus',
+      status: 'Selesai',
+      category: 'Selesai'
+    },
+    {
+      id: 7,
+      title: 'TOEFL-Sesi 7',
+      date: '11 Juli 2026',
+      time: '10.00 - 12.00 WIB',
+      location: 'Lab Bahasa 2',
+      status: 'Selesai',
+      category: 'Selesai'
+    },
+    {
+      id: 8,
+      title: 'TOEFL-Sesi 8',
+      date: '18 Juli 2026',
+      time: '13.00 - 15.00 WIB',
+      location: 'Lab Bahasa 1',
+      status: 'Tersedia',
+      category: 'Tersedia'
+    }
+  ];
+
+  let nearestExam = $state({ ...defaultSessions[0] });
+  let latestResult = $state(null);
 
   onMount(() => {
+    // 1. Ambil nama user yang sedang login
     try {
       const savedUser = localStorage.getItem('user');
       if (savedUser) {
@@ -33,7 +107,140 @@
     } catch (err) {
       console.error('Gagal membaca data user:', err);
     }
+
+    // 2. Muat daftar sesi untuk mencari Ujian Terdekat
+    loadNearestExam();
+
+    // 3. Muat riwayat hasil ujian terakhir milik akun ini
+    try {
+      const savedHistoryRaw = localStorage.getItem(
+        getUserStorageKey('toefl_exam_results_history')
+      );
+      if (savedHistoryRaw) {
+        const historyList = JSON.parse(savedHistoryRaw);
+        if (Array.isArray(historyList) && historyList.length > 0) {
+          latestResult = historyList[0];
+        }
+      }
+    } catch (err) {
+      console.error('Gagal memuat hasil ujian akhir:', err);
+    }
   });
+
+  function getUserSessionsList() {
+    const userSessionsKey = getUserStorageKey('toefl_sessions_list');
+    const savedRaw = localStorage.getItem(userSessionsKey);
+    if (savedRaw) {
+      try {
+        const parsed = JSON.parse(savedRaw);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
+        }
+      } catch (e) {}
+    }
+    localStorage.setItem(userSessionsKey, JSON.stringify(defaultSessions));
+    return [...defaultSessions];
+  }
+
+  function loadNearestExam() {
+    try {
+      const sessionsList = getUserSessionsList();
+
+      // Prioritaskan sesi yang berstatus 'Terdaftar' (dan belum finished),
+      // kalau belum ada yang didaftarkan, ambil sesi terdekat yang berstatus 'Tersedia'
+      const registeredSession = sessionsList.find((s) => {
+        const st = localStorage.getItem(getUserStorageKey(`toefl_exam_status_${s.id}`));
+        return s.status === 'Terdaftar' && st !== 'finished';
+      });
+
+      const availableSession = sessionsList.find((s) => {
+        const st = localStorage.getItem(getUserStorageKey(`toefl_exam_status_${s.id}`));
+        return s.status === 'Tersedia' && st !== 'finished';
+      });
+
+      const picked = registeredSession || availableSession || sessionsList[0];
+
+      if (picked) {
+        const examStatus = localStorage.getItem(
+          getUserStorageKey(`toefl_exam_status_${picked.id}`)
+        );
+        const actualStatus = examStatus === 'finished' ? 'Selesai' : picked.status;
+
+        nearestExam = {
+          id: picked.id,
+          title: picked.title,
+          date: picked.date,
+          time: picked.time,
+          location: picked.location || 'Online / Ruang Utama',
+          status: actualStatus
+        };
+      }
+    } catch (err) {
+      console.error('Gagal memuat sesi terdekat:', err);
+    }
+  }
+
+  // Fungsi tombol utama di bagian bawah kartu Ujian Terdekat
+  function handleNearestExamAction() {
+    if (nearestExam.status === 'Tersedia') {
+      // Langsung daftarkan sesi ini dari Dashboard!
+      const sessionsList = getUserSessionsList();
+      const updatedList = sessionsList.map((s) =>
+        s.id === nearestExam.id ? { ...s, status: 'Terdaftar' } : s
+      );
+
+      localStorage.setItem(
+        getUserStorageKey('toefl_sessions_list'),
+        JSON.stringify(updatedList)
+      );
+      localStorage.setItem(
+        getUserStorageKey(`toefl_exam_status_${nearestExam.id}`),
+        'not_started'
+      );
+
+      const updatedItem = { ...nearestExam, status: 'Terdaftar' };
+      nearestExam = updatedItem;
+
+      localStorage.setItem(
+        getUserStorageKey('toefl_active_session'),
+        JSON.stringify(updatedItem)
+      );
+    } else if (nearestExam.status === 'Terdaftar') {
+      // Jika sudah Terdaftar, langsung arahkan ke halaman Mulai Ujian (/exam)
+      localStorage.setItem(
+        getUserStorageKey('toefl_active_session'),
+        JSON.stringify(nearestExam)
+      );
+      window.history.pushState({}, '', '/exam');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    } else {
+      openLatestResultDetail();
+    }
+  }
+
+  // Fungsi saat klik "Lihat Detail >" di pojok kanan atas kartu Ujian Terdekat:
+  // Langsung lompat ke halaman pagination tempat sesi tersebut berada di /sessions
+  function goToSessionPageInSchedule(event) {
+    event.preventDefault();
+    localStorage.setItem(
+      getUserStorageKey('toefl_jump_to_session_id'),
+      String(nearestExam.id)
+    );
+    window.history.pushState({}, '', '/sessions');
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  }
+
+  function openLatestResultDetail() {
+    if (latestResult) {
+      localStorage.setItem(getUserStorageKey('toefl_results_view_mode'), 'detail');
+      localStorage.setItem(
+        getUserStorageKey('toefl_selected_result_item'),
+        JSON.stringify(latestResult)
+      );
+    }
+    window.history.pushState({}, '', '/results');
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  }
 </script>
 
 <svelte:head>
@@ -50,7 +257,6 @@
   <div class="dashboard-shell">
     <!-- ==================== SIDEBAR KIRI ==================== -->
     <aside class="sidebar">
-      <!-- TEMPAT LOGO 1: Di Atas Sidebar -->
       <div class="brand-box">
         {#if !sidebarLogoError}
           <img
@@ -78,7 +284,6 @@
         {/if}
       </div>
 
-      <!-- Menu Navigasi Sidebar -->
       <nav class="nav-list">
         <a
           href="/dashboard"
@@ -150,7 +355,7 @@
         </a>
 
         <a
-          href="/dashboard"
+          href="/profile"
           class="nav-item"
           class:active={activeMenu === 'profile'}
           onclick={() => (activeMenu = 'profile')}
@@ -170,7 +375,7 @@
 
     <!-- ==================== KONTEN UTAMA KANAN ==================== -->
     <main class="main-area">
-      <!-- 1. BANNER SELAMAT DATANG + TEMPAT LOGO 2 -->
+      <!-- 1. BANNER SELAMAT DATANG -->
       <section class="welcome-banner">
         <div class="welcome-text">
           <h1>Selamat Datang, {userName}!</h1>
@@ -180,7 +385,6 @@
           </p>
         </div>
 
-        <!-- TEMPAT LOGO 2: Di Sebelah Kanan Banner -->
         <div class="banner-logo-box">
           {#if !bannerLogoError}
             <img
@@ -207,7 +411,6 @@
 
       <!-- 2. TIGA KARTU MENU CEPAT (HORIZONTAL) -->
       <section class="summary-cards">
-        <!-- Kartu 1: Ujian Terdaftar -->
         <div class="info-card">
           <div class="circle-badge badge-blue">
             <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#111" stroke-width="2">
@@ -226,7 +429,6 @@
           <h3>Ujian Terdaftar</h3>
         </div>
 
-        <!-- Kartu 2: Ujian Selesai -->
         <div class="info-card">
           <div class="circle-badge badge-green">
             <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#111" stroke-width="2">
@@ -238,7 +440,6 @@
           <h3>Ujian Selesai</h3>
         </div>
 
-        <!-- Kartu 3: Hasil Ujian -->
         <div class="info-card">
           <div class="circle-badge badge-purple">
             <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="#111" stroke-width="2.6" stroke-linecap="round">
@@ -274,15 +475,15 @@
               <h2>Ujian Terdekat</h2>
             </div>
 
-            <a href="/sessions" class="detail-link">
+            <!-- Klik Lihat Detail di kanan atas langsung melompat ke halaman tempat sesi ini berada -->
+            <button type="button" class="detail-link-btn" onclick={goToSessionPageInSchedule}>
               Lihat Detail <span>&rsaquo;</span>
-            </a>
+            </button>
           </div>
 
           <!-- Kotak Dalam Abu-abu Muda -->
           <div class="inner-session-box">
             <div class="session-content">
-              <!-- TEMPAT LOGO 3: Logo Silver / Ungu di Kiri Dalam Kartu -->
               <div class="session-logo-wrap">
                 {#if !cardLogoError}
                   <img
@@ -311,11 +512,18 @@
                 {/if}
               </div>
 
-              <!-- Info Sesi & Badge Status -->
+              <!-- Info Sesi & Badge Status Dinamis -->
               <div class="session-info">
                 <div class="session-top-row">
                   <h4>{nearestExam.title}</h4>
-                  <span class="status-pill registered">{nearestExam.status}</span>
+                  <span
+                    class="status-pill"
+                    class:registered={nearestExam.status === 'Terdaftar'}
+                    class:available={nearestExam.status === 'Tersedia'}
+                    class:done={nearestExam.status === 'Selesai'}
+                  >
+                    {nearestExam.status}
+                  </span>
                 </div>
 
                 <div class="session-meta">
@@ -339,8 +547,15 @@
               </div>
             </div>
 
-            <button type="button" class="full-detail-btn">
-              Lihat Detail <span class="arrow">&rsaquo;</span>
+            <!-- Tombol Bawah: Bisa Daftar Langsung jika statusnya Tersedia! -->
+            <button type="button" class="full-detail-btn" onclick={handleNearestExamAction}>
+              {#if nearestExam.status === 'Tersedia'}
+                Daftar Tes <span class="arrow">&rsaquo;</span>
+              {:else if nearestExam.status === 'Terdaftar'}
+                Lihat Detail <span class="arrow">&rsaquo;</span>
+              {:else}
+                Lihat Hasil Sesi <span class="arrow">&rsaquo;</span>
+              {/if}
             </button>
           </div>
         </div>
@@ -349,44 +564,62 @@
         <div class="final-result-card">
           <h3>Hasil Ujian Akhir</h3>
 
-          <!-- TEMPAT LOGO 4: Ilustrasi Clipboard TOEFL (Kanan Bawah) -->
-          <div class="illustration-box">
-            {#if !resultLogoError}
-              <img
-                src={resultLogoUrl}
-                alt="Ilustrasi Hasil Ujian TOEFL"
-                class="result-logo-img"
-                onerror={() => (resultLogoError = true)}
-              />
-            {:else}
-              <svg viewBox="0 0 180 120" width="150" height="105" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path
-                  d="M35 95C20 95 10 83 12 68C14 55 26 47 38 49C45 33 64 24 83 28C99 18 122 22 132 38C148 36 164 47 166 63C168 80 155 95 138 95H35Z"
-                  fill="#dce8fc"
+          {#if latestResult}
+            <div class="latest-score-box">
+              <span class="latest-session-tag">{latestResult.title}</span>
+              <div class="latest-score-num">{latestResult.totalScore}</div>
+              <span
+                class="latest-status-badge"
+                class:failed={latestResult.status !== 'Lulus'}
+              >
+                Status: {latestResult.status}
+              </span>
+            </div>
+
+            <div class="latest-subscores">
+              <span>L: <strong>{latestResult.listeningScore}</strong></span>
+              <span>S: <strong>{latestResult.structureScore}</strong></span>
+              <span>R: <strong>{latestResult.readingScore}</strong></span>
+            </div>
+
+            <button type="button" class="result-pill-btn" onclick={openLatestResultDetail}>
+              Lihat Hasil Ujian <span>&rsaquo;</span>
+            </button>
+          {:else}
+            <div class="illustration-box">
+              {#if !resultLogoError}
+                <img
+                  src={resultLogoUrl}
+                  alt="Ilustrasi Hasil Ujian TOEFL"
+                  class="result-logo-img"
+                  onerror={() => (resultLogoError = true)}
                 />
-                <rect x="58" y="20" width="64" height="84" rx="7" fill="#8bb4f8" stroke="#6ea0f2" stroke-width="2" />
-                <rect x="65" y="29" width="50" height="68" rx="4" fill="#ffffff" />
-                <rect x="76" y="14" width="28" height="11" rx="3.5" fill="#5e7ce2" />
-                <circle cx="90" cy="14" r="3.5" fill="#dce8fc" />
-                <text x="90" y="52" text-anchor="middle" fill="#0b2e59" font-family="Poppins, sans-serif" font-weight="800" font-size="12">TOEFL</text>
-                <rect x="73" y="59" width="34" height="3.5" rx="1.75" fill="#d0e0ff" />
-                <rect x="77" y="65" width="26" height="3.5" rx="1.75" fill="#d0e0ff" />
-                <circle cx="90" cy="82" r="9.5" fill="#9ec5fe" />
-                <text x="90" y="86.5" text-anchor="middle" fill="#ffffff" font-family="Poppins, sans-serif" font-weight="700" font-size="13">?</text>
-              </svg>
-            {/if}
-          </div>
+              {:else}
+                <svg viewBox="0 0 180 120" width="150" height="105" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path
+                    d="M35 95C20 95 10 83 12 68C14 55 26 47 38 49C45 33 64 24 83 28C99 18 122 22 132 38C148 36 164 47 166 63C168 80 155 95 138 95H35Z"
+                    fill="#dce8fc"
+                  />
+                  <rect x="58" y="20" width="64" height="84" rx="7" fill="#8bb4f8" stroke="#6ea0f2" stroke-width="2" />
+                  <rect x="65" y="29" width="50" height="68" rx="4" fill="#ffffff" />
+                  <rect x="76" y="14" width="28" height="11" rx="3.5" fill="#5e7ce2" />
+                  <circle cx="90" cy="14" r="3.5" fill="#dce8fc" />
+                  <text x="90" y="52" text-anchor="middle" fill="#0b2e59" font-family="Poppins, sans-serif" font-weight="800" font-size="12">TOEFL</text>
+                  <rect x="73" y="59" width="34" height="3.5" rx="1.75" fill="#d0e0ff" />
+                  <rect x="77" y="65" width="26" height="3.5" rx="1.75" fill="#d0e0ff" />
+                  <circle cx="90" cy="82" r="9.5" fill="#9ec5fe" />
+                  <text x="90" y="86.5" text-anchor="middle" fill="#ffffff" font-family="Poppins, sans-serif" font-weight="700" font-size="13">?</text>
+                </svg>
+              {/if}
+            </div>
 
-          <h4>Belum Tersedia</h4>
-          <p class="result-desc">
-            Hasil ujian akan ditampilkan<br />
-            setelah kamu menyelesaikan<br />
-            sesi tes.
-          </p>
-
-          <a href="/results" class="result-pill-btn">
-            Lihat Hasil Ujian <span>&rsaquo;</span>
-          </a>
+            <h4>Belum Tersedia</h4>
+            <p class="result-desc">
+              Hasil ujian akan ditampilkan<br />
+              setelah kamu menyelesaikan<br />
+              sesi tes.
+            </p>
+          {/if}
         </div>
       </section>
     </main>
@@ -400,7 +633,6 @@
     background-color: #f3f7fc;
     color: #172033;
   }
-
   .dashboard-bg {
     min-height: 100vh;
     display: flex;
@@ -410,7 +642,6 @@
     box-sizing: border-box;
     background: linear-gradient(135deg, #e6f2ff 0%, #f3f8ff 100%);
   }
-
   .dashboard-shell {
     width: 100%;
     max-width: 1180px;
@@ -423,8 +654,6 @@
     overflow: hidden;
     position: relative;
   }
-
-  /* ==================== SIDEBAR ==================== */
   .sidebar {
     position: relative;
     border-right: 1.5px solid #e5e9f2;
@@ -435,7 +664,6 @@
     z-index: 1;
     overflow: hidden;
   }
-
   .brand-box {
     display: flex;
     flex-direction: column;
@@ -444,24 +672,20 @@
     margin-bottom: 24px;
     min-height: 100px;
   }
-
   .sidebar-logo-img {
     max-width: 160px;
     max-height: 100px;
     object-fit: contain;
   }
-
   .brand-fallback {
     display: flex;
     flex-direction: column;
     align-items: center;
   }
-
   .logo-t-svg {
     width: 66px;
     height: 66px;
   }
-
   .brand-title {
     font-size: 18.5px;
     font-weight: 800;
@@ -471,7 +695,6 @@
     margin-top: 2px;
     line-height: 1.1;
   }
-
   .brand-sub {
     display: flex;
     align-items: center;
@@ -482,14 +705,12 @@
     color: #2f80ed;
     margin-top: 2px;
   }
-
   .brand-sub span {
     width: 16px;
     height: 1.5px;
     background: #56ccf2;
     display: inline-block;
   }
-
   .nav-list {
     display: flex;
     flex-direction: column;
@@ -497,7 +718,6 @@
     position: relative;
     z-index: 2;
   }
-
   .nav-item {
     display: flex;
     align-items: center;
@@ -510,19 +730,16 @@
     font-weight: 600;
     transition: all 0.2s ease;
   }
-
   .nav-item:hover {
     background: #f2f8ff;
     color: #172033;
   }
-
   .nav-item.active {
     background: linear-gradient(90deg, #b8dcff 0%, #a3d2ff 100%);
     color: #0b192c;
     font-weight: 700;
     box-shadow: 0 3px 6px rgba(86, 158, 255, 0.35);
   }
-
   .nav-icon {
     width: 24px;
     height: 24px;
@@ -531,7 +748,6 @@
     justify-content: center;
     flex-shrink: 0;
   }
-
   .sidebar-wave-decor {
     position: absolute;
     bottom: -55px;
@@ -543,7 +759,6 @@
     pointer-events: none;
     z-index: 0;
   }
-
   .sidebar-wave-decor::after {
     content: '';
     position: absolute;
@@ -554,8 +769,6 @@
     background: #d8f1ff;
     border-radius: 50%;
   }
-
-  /* ==================== MAIN CONTENT KANAN ==================== */
   .main-area {
     padding: 30px 38px 36px;
     display: flex;
@@ -563,8 +776,6 @@
     gap: 24px;
     background: #ffffff;
   }
-
-  /* 1. Banner Selamat Datang */
   .welcome-banner {
     background: linear-gradient(180deg, #dcf0ff 0%, #cbe6ff 100%);
     border: 1.5px solid #c2dfff;
@@ -575,14 +786,12 @@
     justify-content: space-between;
     box-shadow: 0 5px 0 #b8cde3, 0 8px 16px rgba(0, 0, 0, 0.05);
   }
-
   .welcome-text h1 {
     margin: 0 0 6px;
     font-size: 26px;
     font-weight: 700;
     color: #0b2e59;
   }
-
   .welcome-text p {
     margin: 0;
     font-size: 12.5px;
@@ -590,32 +799,26 @@
     color: #7d93a8;
     font-weight: 500;
   }
-
   .banner-logo-box {
     display: flex;
     align-items: center;
     justify-content: center;
     padding-right: 8px;
   }
-
   .banner-logo-img {
     width: 76px;
     height: 76px;
     object-fit: contain;
   }
-
   .banner-logo-fallback {
     width: 74px;
     height: 74px;
   }
-
-  /* 2. Tiga Kartu Ringkasan (Horizontal) */
   .summary-cards {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
     gap: 22px;
   }
-
   .info-card {
     background: #ffffff;
     border: 1.5px solid #e4e7ec;
@@ -627,7 +830,6 @@
     align-items: center;
     gap: 16px;
   }
-
   .circle-badge {
     width: 48px;
     height: 48px;
@@ -637,35 +839,27 @@
     justify-content: center;
     flex-shrink: 0;
   }
-
   .badge-blue {
     background-color: #a9c7ff;
   }
-
   .badge-green {
     background-color: #b4f77e;
   }
-
   .badge-purple {
     background-color: #e39ff6;
   }
-
   .info-card h3 {
     margin: 0;
     font-size: 16px;
     font-weight: 700;
     color: #0b2e59;
   }
-
-  /* 3. Grid Bawah (2 Kolom: Ujian Terdekat & Hasil Ujian Akhir) */
   .bottom-grid {
     display: grid;
     grid-template-columns: 1.95fr 1fr;
     gap: 22px;
     align-items: stretch;
   }
-
-  /* Panel Kiri: Ujian Terdekat */
   .nearest-exam-card {
     background: #ffffff;
     border: 1.5px solid #e4e7ec;
@@ -676,20 +870,17 @@
     flex-direction: column;
     justify-content: space-between;
   }
-
   .card-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
     margin-bottom: 16px;
   }
-
   .header-left {
     display: flex;
     align-items: center;
     gap: 12px;
   }
-
   .circle-badge-sm {
     width: 38px;
     height: 38px;
@@ -698,33 +889,31 @@
     align-items: center;
     justify-content: center;
   }
-
   .badge-soft-blue {
     background-color: #cbdcf7;
   }
-
   .card-header h2 {
     margin: 0;
     font-size: 17px;
     font-weight: 700;
     color: #0b2e59;
   }
-
-  .detail-link {
-    text-decoration: none;
+  .detail-link-btn {
+    background: none;
+    border: none;
+    padding: 0;
+    font-family: inherit;
     font-size: 12px;
     font-weight: 600;
     color: #2b4c7e;
     display: flex;
     align-items: center;
     gap: 4px;
+    cursor: pointer;
   }
-
-  .detail-link:hover {
+  .detail-link-btn:hover {
     text-decoration: underline;
   }
-
-  /* Kotak Abu-abu di Dalam Ujian Terdekat */
   .inner-session-box {
     background: #f5f6f8;
     border: 1.5px solid #e2e5ec;
@@ -734,13 +923,11 @@
     flex-direction: column;
     gap: 22px;
   }
-
   .session-content {
     display: flex;
     align-items: center;
     gap: 26px;
   }
-
   .session-logo-wrap {
     width: 96px;
     height: 96px;
@@ -749,39 +936,33 @@
     justify-content: center;
     flex-shrink: 0;
   }
-
   .session-logo-img {
     width: 90px;
     height: 90px;
     object-fit: contain;
   }
-
   .session-logo-fallback {
     width: 88px;
     height: 88px;
   }
-
   .session-info {
     flex: 1;
     display: flex;
     flex-direction: column;
     gap: 10px;
   }
-
   .session-top-row {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 12px;
   }
-
   .session-top-row h4 {
     margin: 0;
     font-size: 20px;
     font-weight: 700;
     color: #0b2e59;
   }
-
   .status-pill {
     display: inline-block;
     padding: 4px 20px;
@@ -789,18 +970,23 @@
     font-size: 13px;
     font-weight: 600;
   }
-
   .status-pill.registered {
     background-color: #c4f9a2;
     color: #1f2937;
   }
-
+  .status-pill.available {
+    background-color: #bdd7fb;
+    color: #1e3a6d;
+  }
+  .status-pill.done {
+    background-color: #e5e7eb;
+    color: #4b5563;
+  }
   .session-meta {
     display: flex;
     flex-direction: column;
     gap: 7px;
   }
-
   .meta-item {
     display: flex;
     align-items: center;
@@ -808,12 +994,10 @@
     font-size: 13.5px;
     color: #374151;
   }
-
   .meta-time {
     font-weight: 500;
     color: #111827;
   }
-
   .full-detail-btn {
     width: 100%;
     padding: 10px 18px;
@@ -832,17 +1016,13 @@
     box-shadow: 0 3px 8px rgba(59, 130, 246, 0.3);
     transition: background 0.15s ease, transform 0.1s ease;
   }
-
   .full-detail-btn:hover {
     background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%);
   }
-
   .full-detail-btn .arrow {
     font-size: 16px;
     line-height: 1;
   }
-
-  /* Panel Kanan: Hasil Ujian Akhir */
   .final-result-card {
     background: #ffffff;
     border: 1.5px solid #e4e7ec;
@@ -855,62 +1035,105 @@
     text-align: center;
     justify-content: space-between;
   }
-
   .final-result-card h3 {
     margin: 0;
     font-size: 16px;
     font-weight: 700;
     color: #0b2e59;
   }
-
+  .latest-score-box {
+    width: 100%;
+    background: linear-gradient(180deg, #dcf0ff 0%, #f0f8ff 100%);
+    border: 1.2px solid #9ec5ea;
+    border-radius: 12px;
+    padding: 14px 12px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    margin: 6px 0;
+  }
+  .latest-session-tag {
+    font-size: 11px;
+    font-weight: 700;
+    color: #2b4c7e;
+  }
+  .latest-score-num {
+    font-size: 40px;
+    font-weight: 800;
+    color: #0b2e59;
+    line-height: 1.05;
+  }
+  .latest-status-badge {
+    background: #b6f592;
+    color: #1f2937;
+    padding: 3px 14px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    margin-top: 2px;
+  }
+  .latest-status-badge.failed {
+    background: #fca5a5;
+    color: #7f1d1d;
+  }
+  .latest-subscores {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    font-size: 11px;
+    color: #374151;
+    margin-bottom: 6px;
+  }
+  .latest-subscores strong {
+    color: #0b2e59;
+  }
   .illustration-box {
-    margin: 4px 0;
+    margin: 8px 0;
     display: flex;
     align-items: center;
     justify-content: center;
   }
-
   .result-logo-img {
     width: 145px;
     height: 105px;
     object-fit: contain;
   }
-
   .final-result-card h4 {
     margin: 0;
     font-size: 15.5px;
     font-weight: 700;
     color: #0b2e59;
   }
-
   .result-desc {
-    margin: 4px 0 12px;
+    margin: 4px 0 6px;
     font-size: 11px;
     line-height: 1.45;
     color: #6b7280;
   }
-
   .result-pill-btn {
     width: 100%;
     box-sizing: border-box;
     padding: 9px 14px;
     border-radius: 999px;
+    border: none;
     background-color: #dce8fc;
     color: #0b2e59;
-    text-decoration: none;
+    font-family: inherit;
     font-size: 12px;
     font-weight: 700;
+    cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 6px;
     transition: background-color 0.15s ease;
   }
-
   .result-pill-btn:hover {
     background-color: #c9dcfa;
   }
-
   @media (max-width: 960px) {
     .dashboard-shell {
       grid-template-columns: 1fr;

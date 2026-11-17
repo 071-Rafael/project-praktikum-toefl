@@ -11,7 +11,8 @@
   let selectedFilter = $state('Semua');
   let currentPage = $state(1);
 
-  // Daftar sesi awal untuk setiap akun baru
+  const itemsPerPage = 3;
+
   const defaultSessions = [
     {
       id: 1,
@@ -90,7 +91,6 @@
   let sessions = $state([...defaultSessions]);
 
   onMount(() => {
-    // Membaca daftar sesi khusus milik akun yang sedang login
     const userSessionsKey = getUserStorageKey('toefl_sessions_list');
     const savedSessions = localStorage.getItem(userSessionsKey);
     if (savedSessions) {
@@ -102,9 +102,24 @@
     } else {
       sessions = [...defaultSessions];
     }
-  });
 
-  const itemsPerPage = 3;
+    // Cek apakah user baru saja mengklik "Lihat Detail >" dari kartu Ujian Terdekat di Dashboard
+    const jumpSessionIdRaw = localStorage.getItem(
+      getUserStorageKey('toefl_jump_to_session_id')
+    );
+    if (jumpSessionIdRaw) {
+      const targetId = Number(jumpSessionIdRaw);
+      selectedFilter = 'Semua';
+      searchQuery = '';
+
+      const targetIndex = sessions.findIndex((s) => s.id === targetId);
+      if (targetIndex !== -1) {
+        // Hitung halaman tempat sesi tersebut berada (3 item per halaman)
+        currentPage = Math.floor(targetIndex / itemsPerPage) + 1;
+      }
+      localStorage.removeItem(getUserStorageKey('toefl_jump_to_session_id'));
+    }
+  });
 
   let filteredSessions = $derived(
     sessions.filter((item) => {
@@ -139,7 +154,6 @@
     sessions = sessions.map((s) =>
       s.id === sessionId ? { ...s, status: 'Terdaftar' } : s
     );
-    // Simpan ke localStorage spesifik untuk akun yang sedang login
     localStorage.setItem(getUserStorageKey('toefl_sessions_list'), JSON.stringify(sessions));
     localStorage.setItem(getUserStorageKey(`toefl_exam_status_${sessionId}`), 'not_started');
 
