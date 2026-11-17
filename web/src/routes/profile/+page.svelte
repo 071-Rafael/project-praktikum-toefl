@@ -2,9 +2,6 @@
   import { onMount } from 'svelte';
   import { getUserStorageKey } from '../../lib/data/examQuestions.js';
 
-  // =========================================================================
-  // TEMPAT MEMASANG GAMBAR / LOGO KAMU (Taruh filenya di folder web/public/)
-  // =========================================================================
   let sidebarLogoUrl = '/logo-sidebar.png';   // Logo 1: Di atas Sidebar kiri
   let bannerLogoUrl = '/logo-banner.png';     // Logo 2: Di kanan Banner Profile
   let defaultAvatarUrl = '/avatar-profile.png'; // Foto profil default (opsional)

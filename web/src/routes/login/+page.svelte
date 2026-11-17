@@ -6,8 +6,8 @@
   let loading = $state(false);
   let success = $state(false);
 
-  // Ganti '/logo.png' sesuai nama file gambar logo yang kamu simpan di folder web/public/
-  let logoUrl = '/logo.png';
+  
+  let logoUrl = '/logo-banner.png';
   let logoError = $state(false);
 
   async function handleLogin(event) {

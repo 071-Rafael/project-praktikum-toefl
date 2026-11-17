@@ -11,7 +11,7 @@
   let loading = $state(false);
   let success = $state(false);
 
-  let logoUrl = '/logo.png';
+  let logoUrl = '/logo-banner.png';
   let logoError = $state(false);
 
   const allowedEmailDomains = [
