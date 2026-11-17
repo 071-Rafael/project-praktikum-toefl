@@ -6,6 +6,7 @@
   import ExamPage from './routes/exam/+page.svelte';
   import ExamPlayPage from './routes/exam/play/+page.svelte';
   import ResultsPage from './routes/results/+page.svelte';
+  import ProfilePage from './routes/profile/+page.svelte';
 
   let currentPath = $state(window.location.pathname);
 
@@ -16,7 +17,12 @@
     const anchor = target.closest('a');
     if (anchor && anchor.href && anchor.origin === window.location.origin) {
       event.preventDefault();
-      const targetPath = anchor.pathname;
+      let targetPath = anchor.pathname;
+      const linkText = anchor.textContent?.trim().toLowerCase();
+      if (linkText === 'profile') {
+        targetPath = '/profile';
+      }
+
       window.history.pushState({}, '', targetPath);
       currentPath = targetPath;
     }
@@ -28,6 +34,13 @@
 </script>
 
 <svelte:window onclick={handleWindowClick} onpopstate={handlePopState} />
+<svelte:head>
+  <style>
+    .nav-list a.nav-item:nth-child(5):has(+ a.nav-item) {
+      display: none !important;
+    }
+  </style>
+</svelte:head>
 
 {#if currentPath === '/register'}
   <RegisterPage />
@@ -41,6 +54,8 @@
   <ExamPlayPage />
 {:else if currentPath === '/results'}
   <ResultsPage />
+{:else if currentPath === '/profile'}
+  <ProfilePage />
 {:else}
   <LoginPage />
 {/if}
